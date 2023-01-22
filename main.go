@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"log"
@@ -9,21 +10,35 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var logger *log.Logger
+// Initialize logger object
+var logger *log.Logger = log.New(os.Stdout, "", 0)
 
 func main() {
 
-	// Initialize logger object
-	logger = log.New(os.Stdout, "[FileSharing Server] ", log.Lmsgprefix|log.Ldate|log.Ltime)
+	// Create User Data directory if it doesn't exist
+	if stat, err := os.Stat(USERDATA_PATH); err != nil || !stat.IsDir() {
+		if err := os.Mkdir(USERDATA_PATH, USERDATA_DEFAULT_PERM); err != nil {
+			catch(err)
+		}
+	}
 
-	// Load server's TLS certificate
+	// Connect to MongoDB
+	dbClient, err := mongo.NewClient(options.Client().ApplyURI(MONGO_URI))
+	catch(err)
+	if dbClient.Connect(context.TODO()) != nil {
+		catch(err)
+	}
+
+	// Load a TLS server certificate
 	tlsCert, err := tls.LoadX509KeyPair(TLS_CRT_PATH, TLS_KEY_PATH)
 	catch(err)
-	logger.Println("TLS certificate and key files read successfully")
 
-	// Create a server's TLS configuration with loaded certificate and v1.2 <= TLS Version <= v1.3
+	// Create a TLS server configuration with the loaded certificate and the minimum TLS 1.2 version
 	tlsConfig := tls.Config{
 		MinVersion:   tls.VersionTLS12,
 		MaxVersion:   tls.VersionTLS13,
@@ -33,9 +48,9 @@ func main() {
 	// Start a TLS listener
 	listener, err := tls.Listen(LISTEN_NETWORK, LISTEN_ADDRESS, &tlsConfig)
 	catch(err)
-	logger.Printf("Started listening for incoming connections at %s\n", listener.Addr())
+	logger.Printf("The listener has been started to handle incoming connections on %s\n", listener.Addr())
 
-	// Create a channel to receive OS signals
+	// Create a channel to receive signals from OS
 	shutdownChan := make(chan os.Signal, 1)
 	signal.Notify(shutdownChan, syscall.SIGINT)
 
@@ -44,6 +59,14 @@ func main() {
 
 	go func() {
 		for range shutdownChan {
+			logger.Println("\nWaiting for the completion of the current connections.\nPress Ctrl-C again to force shutdown")
+			go func() {
+				for range shutdownChan {
+					logger.Println("\nForced shutdown")
+					listener.Close()
+					os.Exit(0)
+				}
+			}()
 			waitGroup.Wait()
 			listener.Close()
 		}
@@ -67,7 +90,7 @@ func main() {
 		// Add this connection to a WaitGroup
 		waitGroup.Add(1)
 
-		// Run a goroutine to hangle accepted connection
+		// Run a goroutine to handle accepted connection
 		handleConnection(connection, waitGroup)
 	}
 }
