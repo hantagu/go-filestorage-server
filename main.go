@@ -1,54 +1,51 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
 	"errors"
-	"log"
+	"go-filestorage-server/mongodb"
+	"go-filestorage-server/utils"
 	"net"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
-
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-// Initialize logger object
-var logger *log.Logger = log.New(os.Stdout, "", 0)
 
 func main() {
 
-	// Create User Data directory if it doesn't exist
-	if stat, err := os.Stat(USERDATA_PATH); err != nil || !stat.IsDir() {
-		if err := os.Mkdir(USERDATA_PATH, USERDATA_DEFAULT_PERM); err != nil {
-			catch(err)
-		}
-	}
+	utils.InitConfig()
+	mongodb.InitMongoDB()
 
-	// Connect to MongoDB
-	dbClient, err := mongo.NewClient(options.Client().ApplyURI(MONGO_URI))
-	catch(err)
-	if dbClient.Connect(context.TODO()) != nil {
-		catch(err)
+	// Create User Data directory if it doesn't exist
+	if stat, err := os.Stat(utils.Config.UserdataPath); err != nil {
+		if err := os.Mkdir(utils.Config.UserdataPath, 0o700); err != nil {
+			utils.Logger.Fatalln(err)
+		}
+	} else if !stat.IsDir() {
+		utils.Logger.Fatalf("`%s` is not a directory!\n", utils.Config.UserdataPath)
 	}
 
 	// Load a TLS server certificate
-	tlsCert, err := tls.LoadX509KeyPair(TLS_CRT_PATH, TLS_KEY_PATH)
-	catch(err)
+	tlsCert, err := tls.LoadX509KeyPair(utils.Config.TLSCertificatePath, utils.Config.TLSKeyPath)
+	if err != nil {
+		utils.Logger.Fatalln(err)
+	}
 
 	// Create a TLS server configuration with the loaded certificate and the minimum TLS 1.2 version
-	tlsConfig := tls.Config{
+	tlsConfig := &tls.Config{
 		MinVersion:   tls.VersionTLS12,
 		MaxVersion:   tls.VersionTLS13,
 		Certificates: []tls.Certificate{tlsCert},
 	}
 
 	// Start a TLS listener
-	listener, err := tls.Listen(LISTEN_NETWORK, LISTEN_ADDRESS, &tlsConfig)
-	catch(err)
-	logger.Printf("The listener has been started to handle incoming connections on %s\n", listener.Addr())
+	listener, err := tls.Listen("tcp", utils.Config.ListenAddress, tlsConfig)
+	if err != nil {
+		utils.Logger.Fatalln(err)
+	}
+
+	utils.Logger.Printf("The listener has been started on %s\n", listener.Addr())
 
 	// Create a channel to receive signals from OS
 	shutdownChan := make(chan os.Signal, 1)
@@ -59,16 +56,17 @@ func main() {
 
 	go func() {
 		for range shutdownChan {
-			logger.Println("\nWaiting for the completion of the current connections.\nPress Ctrl-C again to force shutdown")
+			utils.Logger.Println("\nWaiting for the completion of the current connections.\nPress Ctrl-C again to force shutdown")
 			go func() {
 				for range shutdownChan {
-					logger.Println("\nForced shutdown")
+					utils.Logger.Println("\nForced shutdown")
 					listener.Close()
 					os.Exit(0)
 				}
 			}()
 			waitGroup.Wait()
 			listener.Close()
+			os.Exit(0)
 		}
 	}()
 
@@ -78,25 +76,19 @@ func main() {
 
 		// This error is returned when the Listener is closed
 		if errors.Is(err, net.ErrClosed) {
-			logger.Println("Server successfully stopped")
+			utils.Logger.Println("Server successfully stopped")
 			break
 		} else if err != nil {
-			logger.Printf("Accept() error: %s\n", err.Error())
+			utils.Logger.Printf("Connection accept error: %s\n", err)
 			continue
 		}
 
-		logger.Printf("Accepted a new connection from %s\n", connection.RemoteAddr())
+		utils.Logger.Printf("Accepted a new connection from %s\n", connection.RemoteAddr())
 
 		// Add this connection to a WaitGroup
 		waitGroup.Add(1)
 
 		// Run a goroutine to handle accepted connection
-		handleConnection(connection, waitGroup)
-	}
-}
-
-func catch(err error) {
-	if err != nil {
-		logger.Fatalln(err.Error())
+		go handleConnection(connection, waitGroup)
 	}
 }

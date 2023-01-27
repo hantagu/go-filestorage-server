@@ -1,19 +1,19 @@
 package types
 
-import "net"
+const (
+	UPLOAD_METADATA = "upload_metadata"
+	UPLOAD_DATA     = "upload_data"
+)
 
-const UPLOAD = "upload"
-
-type UploadHead struct {
-	Name      string `bson:"name,omitempty"`      // File name
-	Encrypted bool   `bson:"encrypted,omitempty"` // Was the file additionally encrypted on the client side?
-	Parts     uint32 `bson:"parts,omitempty"`     // Total Parts
-
-	Part uint32 `bson:"part,omitempty"` // Number of this part
+// File metadata
+type UploadMetadata struct {
+	Name      string `bson:"name"`      // File name
+	Encrypted bool   `bson:"encrypted"` // Was the file additionally encrypted on the client side?
+	Parts     uint32 `bson:"parts"`     // Total Parts
 }
 
-type UploadBody []byte
-
-func HandleUpload(connection net.Conn, packet *Packet) {
-	// TODO
+// File
+type UploadData struct {
+	Part    uint32 `bson:"part"`    // Number of this part
+	Content []byte `bson:"content"` // Content of this part
 }

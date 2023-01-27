@@ -1,0 +1,44 @@
+package utils
+
+import (
+	"encoding/json"
+	"os"
+)
+
+var Config *config
+
+type config struct {
+	ListenAddress           string `json:"listen_address"`
+	TLSCertificatePath      string `json:"tls_cert_path"`
+	TLSKeyPath              string `json:"tls_key_path"`
+	UserdataPath            string `json:"userdata_path"`
+	MongoDB_URI             string `json:"mongodb_uri"`
+	MongoDB_DB              string `json:"mongodb_db"`
+	MongoDB_FilesCollection string `json:"mongodb_filescollection"`
+}
+
+func DefaultConfig() *config {
+	return &config{
+		"0.0.0.0:18123",
+		"./tls/server-crt.pem",
+		"./tls/server-key.pem",
+		"./userdata",
+		"mongodb://127.0.0.1:27017",
+		"filestorage",
+		"files",
+	}
+}
+
+func InitConfig() {
+
+	if stat, err := os.Stat(CONFIG_FILE_PATH); err != nil {
+		Config = DefaultConfig()
+		raw_cfg, _ := json.MarshalIndent(Config, "", "    ")
+		os.WriteFile(CONFIG_FILE_PATH, raw_cfg, 0o600)
+	} else if stat.IsDir() {
+		Logger.Fatalf("`%s` is not a file!\n", CONFIG_FILE_PATH)
+	}
+
+	raw_cfg, _ := os.ReadFile(CONFIG_FILE_PATH)
+	json.Unmarshal(raw_cfg, &Config)
+}
