@@ -1,4 +1,4 @@
-module go-filesharing-server
+module go-filestorage-server
 
 go 1.19
 
