@@ -1,4 +1,4 @@
-package types
+package protocol
 
 const (
 	UPLOAD_METADATA = "upload_metadata"
