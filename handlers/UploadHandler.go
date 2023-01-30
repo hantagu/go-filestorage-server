@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"go-filestorage-server/types"
+	"go-filestorage-server/protocol"
 	"go-filestorage-server/utils"
 	"net"
 	"os"
@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func HandleUpload(connection net.Conn, first_packet *types.Packet) {
+func HandleUpload(connection net.Conn, first_packet *protocol.Packet) {
 
 	filepath := fmt.Sprintf("%s%c%d", utils.Config.UserdataPath, os.PathSeparator, time.Now().UnixNano())
 
@@ -22,22 +22,22 @@ func HandleUpload(connection net.Conn, first_packet *types.Packet) {
 	}
 	defer file.Close()
 
-	uploadMetadata := &types.UploadMetadata{}
+	// Unmarshal file metadata
+	uploadMetadata := &protocol.UploadMetadata{}
 	bson.Unmarshal(first_packet.Data, uploadMetadata)
 
-	utils.Logger.Printf("%+#v\n", uploadMetadata)
-
+	// Read all parts of a file
 	var i uint32 = 0
 	for ; i < uploadMetadata.Parts; i++ {
 		packet, err := utils.ReceiveAndVerifyPacket(connection)
 		if err != nil {
-			utils.Logger.Printf("UH36 %s: %s\n", connection.RemoteAddr(), err)
+			utils.Logger.Printf("%s: %s\n", connection.RemoteAddr(), err)
 			file.Close()
 			os.Remove(filepath)
 			return
 		}
 
-		uploadData := &types.UploadData{}
+		uploadData := &protocol.UploadData{}
 		bson.Unmarshal(packet.Data, uploadData)
 
 		file.Write(uploadData.Content)

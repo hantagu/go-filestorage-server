@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"go-filestorage-server/handlers"
-	"go-filestorage-server/types"
+	"go-filestorage-server/protocol"
 	"go-filestorage-server/utils"
 	"io"
 	"net"
@@ -32,7 +32,7 @@ func handleConnection(connection net.Conn, waitGroup *sync.WaitGroup) {
 	}
 
 	switch packet.Type {
-	case types.UPLOAD_METADATA:
+	case protocol.UPLOAD_METADATA:
 		handlers.HandleUpload(connection, packet)
 	}
 }

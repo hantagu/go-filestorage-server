@@ -5,6 +5,7 @@ import (
 	"go-filestorage-server/utils"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -37,5 +38,14 @@ func InitMongoDB() {
 	if err := Client.Ping(ctx, nil); err != nil {
 		utils.Logger.Fatalln(err)
 		return
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if collections, err := Client.Database(utils.Config.MongoDB_DB).ListCollectionNames(ctx, bson.D{}, nil); err != nil {
+		utils.Logger.Fatalln(err)
+	} else if !utils.Contains(collections, utils.Config.MongoDB_FilesCollection) || !utils.Contains(collections, utils.Config.MongoDB_UsersCollection) {
+
 	}
 }

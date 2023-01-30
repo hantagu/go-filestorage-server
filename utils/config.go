@@ -15,6 +15,7 @@ type config struct {
 	MongoDB_URI             string `json:"mongodb_uri"`
 	MongoDB_DB              string `json:"mongodb_db"`
 	MongoDB_FilesCollection string `json:"mongodb_filescollection"`
+	MongoDB_UsersCollection string `json:"mongodb_userscollection"`
 }
 
 func DefaultConfig() *config {
@@ -26,6 +27,7 @@ func DefaultConfig() *config {
 		"mongodb://127.0.0.1:27017",
 		"filestorage",
 		"files",
+		"users",
 	}
 }
 
@@ -39,6 +41,9 @@ func InitConfig() {
 		Logger.Fatalf("`%s` is not a file!\n", CONFIG_FILE_PATH)
 	}
 
-	raw_cfg, _ := os.ReadFile(CONFIG_FILE_PATH)
-	json.Unmarshal(raw_cfg, &Config)
+	if raw_cfg, err := os.ReadFile(CONFIG_FILE_PATH); err != nil {
+		Logger.Fatalln(err)
+	} else {
+		json.Unmarshal(raw_cfg, Config)
+	}
 }
