@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var Config *config
+var Config *config = DefaultConfig()
 
 type config struct {
 	ListenAddress           string `json:"listen_address"`
@@ -34,11 +34,10 @@ func DefaultConfig() *config {
 func InitConfig() {
 
 	if stat, err := os.Stat(CONFIG_FILE_PATH); err != nil {
-		Config = DefaultConfig()
 		raw_cfg, _ := json.MarshalIndent(Config, "", "    ")
 		os.WriteFile(CONFIG_FILE_PATH, raw_cfg, 0o600)
 	} else if stat.IsDir() {
-		Logger.Fatalf("`%s` is not a file!\n", CONFIG_FILE_PATH)
+		Logger.Fatalf("`%s` is not a file\n", stat.Name())
 	}
 
 	if raw_cfg, err := os.ReadFile(CONFIG_FILE_PATH); err != nil {
