@@ -9,7 +9,7 @@ const (
 type UploadMetadata struct {
 	Name      string `bson:"name"`      // File name
 	Encrypted bool   `bson:"encrypted"` // Was the file additionally encrypted on the client side?
-	Parts     uint32 `bson:"parts"`     // Total Parts
+	Parts     uint32 `bson:"parts"`     // Total parts
 }
 
 // File

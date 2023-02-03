@@ -25,13 +25,17 @@ func handleConnection(connection net.Conn, waitGroup *sync.WaitGroup) {
 		return
 	}
 
+	// Receive first packet in connection
 	packet, err := utils.ReceiveAndVerifyPacket(connection)
 	if err != nil {
 		utils.Logger.Printf("%s: %s\n", connection.RemoteAddr(), err)
 		return
 	}
 
+	// Select handler function depending on the type of package
 	switch packet.Type {
+	case protocol.CLAIM_USERNAME:
+		handlers.HandleClaimUsername(connection, packet)
 	case protocol.UPLOAD_METADATA:
 		handlers.HandleUpload(connection, packet)
 	}

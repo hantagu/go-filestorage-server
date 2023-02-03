@@ -1,7 +1,11 @@
 package handlers
 
 import (
+	"context"
+	"crypto/ed25519"
 	"fmt"
+	"go-filestorage-server/mongodb"
+	"go-filestorage-server/mongodb/types"
 	"go-filestorage-server/protocol"
 	"go-filestorage-server/utils"
 	"net"
@@ -9,11 +13,13 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func HandleUpload(connection net.Conn, first_packet *protocol.Packet) {
 
-	filepath := fmt.Sprintf("%s%c%d", utils.Config.UserdataPath, os.PathSeparator, time.Now().UnixNano())
+	file_id := primitive.NewObjectID()
+	filepath := fmt.Sprintf("%s%c%s", utils.Config.UserdataPath, os.PathSeparator, file_id.Hex())
 
 	file, err := os.Create(filepath)
 	if err != nil {
@@ -42,4 +48,14 @@ func HandleUpload(connection net.Conn, first_packet *protocol.Packet) {
 
 		file.Write(uploadData.Content)
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+
+	mongodb.FilesCollection.InsertOne(ctx, types.File{
+		ID:     file_id,
+		Owner:  first_packet.PublicKey,
+		Name:   uploadMetadata.Name,
+		Access: []ed25519.PublicKey{},
+	})
 }

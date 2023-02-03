@@ -14,6 +14,7 @@ var (
 	Client          *mongo.Client
 	Database        *mongo.Database
 	UsersCollection *mongo.Collection
+	FilesCollection *mongo.Collection
 )
 
 func InitMongoDB() {
@@ -26,14 +27,14 @@ func InitMongoDB() {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	if err := Client.Connect(ctx); err != nil {
 		utils.Logger.Fatalln(err)
 		return
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	if err := Client.Ping(ctx, nil); err != nil {
 		utils.Logger.Fatalln(err)
@@ -42,15 +43,18 @@ func InitMongoDB() {
 
 	Database = Client.Database(utils.Config.MongoDB_DB)
 	UsersCollection = Database.Collection(utils.Config.MongoDB_UsersCollection)
+	FilesCollection = Database.Collection(utils.Config.MongoDB_FilesCollection)
 
-	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
+	// Make the `public_key` field unique in Users collection
+	ctx, cancel = context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	UsersCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "public_key", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
 
-	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
+	// Make the `login` field unique in Users collection
+	ctx, cancel = context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	UsersCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "login", Value: 1}},
