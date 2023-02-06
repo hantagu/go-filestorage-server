@@ -72,7 +72,7 @@ func main() {
 
 	// Endless loop that accepts new connections
 	for {
-		connection, err := listener.Accept()
+		conn, err := listener.Accept()
 
 		// This error is returned when the Listener is closed
 		if errors.Is(err, net.ErrClosed) {
@@ -83,12 +83,12 @@ func main() {
 			continue
 		}
 
-		utils.Logger.Printf("Accepted a new connection from %s\n", connection.RemoteAddr())
+		utils.Logger.Printf("Accepted a new connection from %s\n", conn.RemoteAddr())
 
 		// Add this connection to a WaitGroup
 		waitGroup.Add(1)
 
 		// Run a goroutine to handle accepted connection
-		go handleConnection(connection, waitGroup)
+		go handleConnection(conn, waitGroup)
 	}
 }

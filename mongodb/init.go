@@ -19,6 +19,7 @@ var (
 
 func InitMongoDB() {
 
+	// Create new client with URI from config
 	opts := options.Client()
 	opts.ApplyURI(utils.Config.MongoDB_URI)
 	var err error
@@ -27,6 +28,7 @@ func InitMongoDB() {
 		return
 	}
 
+	// Connect to MongoDB
 	ctx, cancel := context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	if err := Client.Connect(ctx); err != nil {
@@ -34,6 +36,7 @@ func InitMongoDB() {
 		return
 	}
 
+	// Ping MongoDB server
 	ctx, cancel = context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	if err := Client.Ping(ctx, nil); err != nil {
