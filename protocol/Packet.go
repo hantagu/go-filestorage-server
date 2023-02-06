@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"crypto/ed25519"
+	"net"
 
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -22,4 +23,15 @@ type Response struct {
 // Response data with simple string description
 type ResponseDescription struct {
 	Description string `bson:"description"` // Description
+}
+
+func SendDescriptionError(conn net.Conn, desc string) {
+
+	description := ResponseDescription{desc}
+	raw_description, _ := bson.Marshal(description)
+
+	response := Response{false, raw_description}
+	raw_response, _ := bson.Marshal(response)
+
+	conn.Write(raw_response)
 }

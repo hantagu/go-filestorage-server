@@ -16,35 +16,43 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func HandleUpload(connection net.Conn, first_packet *protocol.Packet) {
+func HandleUpload(conn net.Conn, first_packet *protocol.Packet) {
 
 	file_id := primitive.NewObjectID()
 	filepath := fmt.Sprintf("%s%c%s", utils.Config.UserdataPath, os.PathSeparator, file_id.Hex())
 
 	file, err := os.Create(filepath)
 	if err != nil {
-		utils.Logger.Printf("%s: failed to create file in `%s` directory\n", connection.RemoteAddr(), utils.Config.UserdataPath)
+		utils.Logger.Printf("%s: failed to create file in `%s` directory\n", conn.RemoteAddr(), utils.Config.UserdataPath)
+		protocol.SendDescriptionError(conn, "Failed to create file on server")
 		return
 	}
 	defer file.Close()
 
 	// Unmarshal file metadata
 	uploadMetadata := &protocol.UploadMetadata{}
-	bson.Unmarshal(first_packet.Data, uploadMetadata)
+	if err := bson.Unmarshal(first_packet.Data, uploadMetadata); err != nil {
+		protocol.SendDescriptionError(conn, "Failed to decode packet data")
+		return
+	}
 
 	// Read all parts of a file
 	var i uint32 = 0
 	for ; i < uploadMetadata.Parts; i++ {
-		packet, err := utils.ReceiveAndVerifyPacket(connection)
+		packet, err := utils.ReceiveAndVerifyPacket(conn)
 		if err != nil {
-			utils.Logger.Printf("%s: %s\n", connection.RemoteAddr(), err)
+			utils.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
 			file.Close()
 			os.Remove(filepath)
+			protocol.SendDescriptionError(conn, "Something went wrong while uploading the file")
 			return
 		}
 
 		uploadData := &protocol.UploadData{}
-		bson.Unmarshal(packet.Data, uploadData)
+		if err := bson.Unmarshal(packet.Data, uploadData); err != nil {
+			protocol.SendDescriptionError(conn, "Failed to decode packet data")
+			return
+		}
 
 		file.Write(uploadData.Content)
 	}
@@ -52,10 +60,16 @@ func HandleUpload(connection net.Conn, first_packet *protocol.Packet) {
 	ctx, cancel := context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 
-	mongodb.FilesCollection.InsertOne(ctx, types.File{
+	if _, err := mongodb.FilesCollection.InsertOne(ctx, types.File{
 		ID:     file_id,
 		Owner:  first_packet.PublicKey,
 		Name:   uploadMetadata.Name,
 		Access: []ed25519.PublicKey{},
-	})
+	}); err != nil {
+		utils.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
+		file.Close()
+		os.Remove(filepath)
+		protocol.SendDescriptionError(conn, "Something went wrong while uploading the file")
+		return
+	}
 }
