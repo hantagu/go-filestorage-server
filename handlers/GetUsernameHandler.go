@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"go-filestorage-server/mongodb"
 	"go-filestorage-server/mongodb/types"
 	"go-filestorage-server/protocol"
@@ -13,10 +14,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func HandleClaimUsername(conn net.Conn, packet *protocol.Packet) {
+func HandleGetUsername(conn net.Conn, packet *protocol.Packet) {
 
 	// Unmarshal packet data
-	request := &protocol.ClaimUsername{}
+	request := &protocol.GetUsername{}
 	if err := bson.Unmarshal(packet.Data, request); err != nil {
 		utils.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
 		protocol.SendDescriptionError(conn, "Failed to decode packet data")
@@ -26,10 +27,15 @@ func HandleClaimUsername(conn net.Conn, packet *protocol.Packet) {
 	ctx, cancel := context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 
-	// Try to insert the information into database and send a response if there is an error (username is already taken)
-	if _, err := mongodb.UsersCollection.InsertOne(ctx, types.User{PublicKey: packet.PublicKey, Username: request.Username}); mongo.IsDuplicateKeyError(err) {
-		protocol.SendDescriptionError(conn, "This username is already taken or you already have a username")
+	find_result := mongodb.UsersCollection.FindOne(ctx, nil)
+	result := &types.User{}
+
+	if err := find_result.Decode(result); errors.Is(err, mongo.ErrNoDocuments) {
+		protocol.SendDescriptionError(conn, "This public key does not match any username")
+		return
 	} else if err != nil {
 		protocol.SendDescriptionError(conn, "Internal error")
+		return
 	}
+
 }

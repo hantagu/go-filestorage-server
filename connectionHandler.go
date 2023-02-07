@@ -34,6 +34,8 @@ func handleConnection(conn net.Conn, waitGroup *sync.WaitGroup) {
 
 	// Select handler function depending on the type of package
 	switch packet.Type {
+	case protocol.GET_USERNAME:
+		handlers.HandleGetUsername(conn, packet)
 	case protocol.CLAIM_USERNAME:
 		handlers.HandleClaimUsername(conn, packet)
 	case protocol.UPLOAD_METADATA:

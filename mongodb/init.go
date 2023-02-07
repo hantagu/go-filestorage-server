@@ -63,4 +63,12 @@ func InitMongoDB() {
 		Keys:    bson.D{{Key: "login", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
+
+	// Make the `name` field unique for each user
+	ctx, cancel = context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+	FilesCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "owner", Value: 1}, {Key: "name", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
 }
