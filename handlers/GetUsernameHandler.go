@@ -3,8 +3,8 @@ package handlers
 import (
 	"context"
 	"errors"
-	"go-filestorage-server/mongodb"
-	"go-filestorage-server/mongodb/types"
+	"go-filestorage-server/db"
+	db_types "go-filestorage-server/db/types"
 	"go-filestorage-server/protocol"
 	"go-filestorage-server/utils"
 	"net"
@@ -27,10 +27,8 @@ func HandleGetUsername(conn net.Conn, packet *protocol.Packet) {
 	ctx, cancel := context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 
-	find_result := mongodb.UsersCollection.FindOne(ctx, nil)
-	result := &types.User{}
-
-	if err := find_result.Decode(result); errors.Is(err, mongo.ErrNoDocuments) {
+	result := &db_types.User{}
+	if err := db.UsersCollection.FindOne(ctx, bson.D{{Key: "publickey", Value: request.Publickey}}).Decode(result); errors.Is(err, mongo.ErrNoDocuments) {
 		protocol.SendDescriptionError(conn, "This public key does not match any username")
 		return
 	} else if err != nil {
@@ -38,4 +36,21 @@ func HandleGetUsername(conn net.Conn, packet *protocol.Packet) {
 		return
 	}
 
+	response_data, err := bson.Marshal(result)
+	if err != nil {
+		protocol.SendDescriptionError(conn, "Internal error")
+		return
+	}
+
+	raw_response, err := bson.Marshal(protocol.Response{
+		Successful: true,
+		Data:       response_data,
+	})
+
+	if err != nil {
+		protocol.SendDescriptionError(conn, "Internal error")
+		return
+	}
+
+	conn.Write(raw_response)
 }

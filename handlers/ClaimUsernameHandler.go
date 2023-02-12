@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"context"
-	"go-filestorage-server/mongodb"
-	"go-filestorage-server/mongodb/types"
+	"go-filestorage-server/db"
+	db_types "go-filestorage-server/db/types"
 	"go-filestorage-server/protocol"
 	"go-filestorage-server/utils"
 	"net"
@@ -27,9 +27,21 @@ func HandleClaimUsername(conn net.Conn, packet *protocol.Packet) {
 	defer cancel()
 
 	// Try to insert the information into database and send a response if there is an error (username is already taken)
-	if _, err := mongodb.UsersCollection.InsertOne(ctx, types.User{PublicKey: packet.PublicKey, Username: request.Username}); mongo.IsDuplicateKeyError(err) {
+	if _, err := db.UsersCollection.InsertOne(ctx, db_types.User{PublicKey: packet.PublicKey, Username: request.Username}); mongo.IsDuplicateKeyError(err) {
 		protocol.SendDescriptionError(conn, "This username is already taken or you already have a username")
 	} else if err != nil {
 		protocol.SendDescriptionError(conn, "Internal error")
 	}
+
+	raw_response, err := bson.Marshal(protocol.Response{
+		Successful: true,
+		Data:       nil,
+	})
+
+	if err != nil {
+		protocol.SendDescriptionError(conn, "Internal error")
+		return
+	}
+
+	conn.Write(raw_response)
 }

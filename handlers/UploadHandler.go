@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/ed25519"
 	"fmt"
-	"go-filestorage-server/mongodb"
-	"go-filestorage-server/mongodb/types"
+	"go-filestorage-server/db"
+	db_types "go-filestorage-server/db/types"
 	"go-filestorage-server/protocol"
 	"go-filestorage-server/utils"
 	"net"
@@ -24,7 +24,7 @@ func HandleUpload(conn net.Conn, first_packet *protocol.Packet) {
 	file, err := os.Create(filepath)
 	if err != nil {
 		utils.Logger.Printf("%s: failed to create file in `%s` directory\n", conn.RemoteAddr(), utils.Config.UserdataPath)
-		protocol.SendDescriptionError(conn, "Failed to create file on server")
+		protocol.SendDescriptionError(conn, "Internal error")
 		return
 	}
 	defer file.Close()
@@ -44,7 +44,7 @@ func HandleUpload(conn net.Conn, first_packet *protocol.Packet) {
 			utils.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
 			file.Close()
 			os.Remove(filepath)
-			protocol.SendDescriptionError(conn, "Something went wrong while uploading the file")
+			protocol.SendDescriptionError(conn, "Internal error")
 			return
 		}
 
@@ -60,7 +60,7 @@ func HandleUpload(conn net.Conn, first_packet *protocol.Packet) {
 	ctx, cancel := context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 
-	if _, err := mongodb.FilesCollection.InsertOne(ctx, types.File{
+	if _, err := db.FilesCollection.InsertOne(ctx, db_types.File{
 		ID:     file_id,
 		Owner:  first_packet.PublicKey,
 		Name:   uploadMetadata.Name,
@@ -69,7 +69,7 @@ func HandleUpload(conn net.Conn, first_packet *protocol.Packet) {
 		utils.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
 		file.Close()
 		os.Remove(filepath)
-		protocol.SendDescriptionError(conn, "Something went wrong while uploading the file")
+		protocol.SendDescriptionError(conn, "Internal error")
 		return
 	}
 }
