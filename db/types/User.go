@@ -1,4 +1,4 @@
-package types
+package db_types
 
 import "crypto/ed25519"
 

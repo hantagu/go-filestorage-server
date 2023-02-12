@@ -3,7 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"errors"
-	"go-filestorage-server/mongodb"
+	"go-filestorage-server/db"
 	"go-filestorage-server/utils"
 	"net"
 	"os"
@@ -15,7 +15,7 @@ import (
 func main() {
 
 	utils.InitConfig()
-	mongodb.InitMongoDB()
+	db.InitMongoDB()
 
 	// Create User Data directory if it doesn't exist
 	if stat, err := os.Stat(utils.Config.UserdataPath); err != nil {
