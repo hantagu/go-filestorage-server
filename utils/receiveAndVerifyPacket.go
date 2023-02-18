@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"encoding/binary"
 	"errors"
+	"go-filestorage-server/config"
 	"go-filestorage-server/protocol"
 	"io"
 	"net"
@@ -13,9 +14,9 @@ import (
 
 var ErrPacketSignature = errors.New("invalid packet signature")
 
-func ReceiveAndVerifyPacket(conn net.Conn) (*protocol.Packet, error) {
+func ReceiveAndVerifyPacket(conn net.Conn) (*protocol.Request, error) {
 
-	buffer := make([]byte, PROTO_BSON_DOCUMENT_LENGTH_SIZE)
+	buffer := make([]byte, config.PROTO_BSON_DOCUMENT_LENGTH_SIZE)
 
 	// Read first N bytes (according to BSON documentation) which indicate the size of the entire BSON document
 	if _, err := io.ReadFull(conn, buffer); err != nil {
@@ -23,16 +24,16 @@ func ReceiveAndVerifyPacket(conn net.Conn) (*protocol.Packet, error) {
 	}
 
 	// Convert bytes to a UInt32 (4-byte) value
-	packetLength := binary.LittleEndian.Uint32(buffer) - PROTO_BSON_DOCUMENT_LENGTH_SIZE
+	packetLength := binary.LittleEndian.Uint32(buffer) - config.PROTO_BSON_DOCUMENT_LENGTH_SIZE
 
 	// Read BSON document
 	buffer = append(buffer, make([]byte, packetLength)...)
-	if _, err := io.ReadFull(conn, buffer[PROTO_BSON_DOCUMENT_LENGTH_SIZE:]); err != nil {
+	if _, err := io.ReadFull(conn, buffer[config.PROTO_BSON_DOCUMENT_LENGTH_SIZE:]); err != nil {
 		return nil, err
 	}
 
 	// Decode a BSON document to a generic packet to find out it's type
-	packet := protocol.Packet{}
+	packet := protocol.Request{}
 	if err := bson.Unmarshal(buffer, &packet); err != nil {
 		return nil, err
 	}
