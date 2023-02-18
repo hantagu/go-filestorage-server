@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/ed25519"
 	"fmt"
+	"go-filestorage-server/config"
 	"go-filestorage-server/db"
 	db_types "go-filestorage-server/db/types"
+	"go-filestorage-server/logger"
 	"go-filestorage-server/protocol"
 	"go-filestorage-server/utils"
 	"net"
@@ -19,12 +21,12 @@ import (
 func HandleUpload(conn net.Conn, first_packet *protocol.Packet) {
 
 	file_id := primitive.NewObjectID()
-	filepath := fmt.Sprintf("%s%c%s", utils.Config.UserdataPath, os.PathSeparator, file_id.Hex())
+	filepath := fmt.Sprintf("%s%c%s", config.Config.UserdataPath, os.PathSeparator, file_id.Hex())
 
 	file, err := os.Create(filepath)
 	if err != nil {
-		utils.Logger.Printf("%s: failed to create file in `%s` directory\n", conn.RemoteAddr(), utils.Config.UserdataPath)
-		protocol.SendDescriptionError(conn, "Internal error")
+		logger.Logger.Printf("%s: failed to create file in `%s` directory\n", conn.RemoteAddr(), config.Config.UserdataPath)
+		protocol.SendDescription(conn, false, "Internal error")
 		return
 	}
 	defer file.Close()
@@ -32,7 +34,7 @@ func HandleUpload(conn net.Conn, first_packet *protocol.Packet) {
 	// Unmarshal file metadata
 	uploadMetadata := &protocol.UploadMetadata{}
 	if err := bson.Unmarshal(first_packet.Data, uploadMetadata); err != nil {
-		protocol.SendDescriptionError(conn, "Failed to decode packet data")
+		protocol.SendDescription(conn, false, "Failed to decode packet data")
 		return
 	}
 
@@ -41,23 +43,23 @@ func HandleUpload(conn net.Conn, first_packet *protocol.Packet) {
 	for ; i < uploadMetadata.Parts; i++ {
 		packet, err := utils.ReceiveAndVerifyPacket(conn)
 		if err != nil {
-			utils.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
+			logger.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
 			file.Close()
 			os.Remove(filepath)
-			protocol.SendDescriptionError(conn, "Internal error")
+			protocol.SendDescription(conn, false, "Internal error")
 			return
 		}
 
 		uploadData := &protocol.UploadData{}
 		if err := bson.Unmarshal(packet.Data, uploadData); err != nil {
-			protocol.SendDescriptionError(conn, "Failed to decode packet data")
+			protocol.SendDescription(conn, false, "Failed to decode packet data")
 			return
 		}
 
 		file.Write(uploadData.Content)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), utils.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 
 	if _, err := db.FilesCollection.InsertOne(ctx, db_types.File{
@@ -66,10 +68,10 @@ func HandleUpload(conn net.Conn, first_packet *protocol.Packet) {
 		Name:   uploadMetadata.Name,
 		Access: []ed25519.PublicKey{},
 	}); err != nil {
-		utils.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
+		logger.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
 		file.Close()
 		os.Remove(filepath)
-		protocol.SendDescriptionError(conn, "Internal error")
+		protocol.SendDescription(conn, false, "Internal error")
 		return
 	}
 }
