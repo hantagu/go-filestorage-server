@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"go-filestorage-server/logger"
 	"os"
 )
@@ -30,14 +31,12 @@ type config struct {
 
 func Init() {
 
-	if stat, err := os.Stat(CONFIG_FILE_PATH); err != nil {
-		raw_cfg, _ := json.MarshalIndent(Config, "", "    ")
-		os.WriteFile(CONFIG_FILE_PATH, raw_cfg, 0o600)
-	} else if stat.IsDir() {
-		logger.Logger.Fatalf("`%s` is not a file\n", stat.Name())
-	}
-
-	if raw_cfg, err := os.ReadFile(CONFIG_FILE_PATH); err != nil {
+	if raw_cfg, err := os.ReadFile(CONFIG_FILE_PATH); errors.Is(err, os.ErrNotExist) {
+		raw_cfg, _ = json.MarshalIndent(Config, "", "    ")
+		if err := os.WriteFile(CONFIG_FILE_PATH, raw_cfg, 0o666); err != nil {
+			logger.Logger.Fatalln(err)
+		}
+	} else if err != nil {
 		logger.Logger.Fatalln(err)
 	} else {
 		json.Unmarshal(raw_cfg, Config)

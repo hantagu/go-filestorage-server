@@ -18,7 +18,7 @@ func ReceiveAndVerifyPacket(conn net.Conn) (*protocol.Request, error) {
 
 	buffer := make([]byte, config.PROTO_BSON_DOCUMENT_LENGTH_SIZE)
 
-	// Read first N bytes (according to BSON documentation) which indicate the size of the entire BSON document
+	// Read first 4 bytes (according to BSON documentation) which indicate the size of the entire BSON document
 	if _, err := io.ReadFull(conn, buffer); err != nil {
 		return nil, err
 	}
