@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"go-filestorage-server/config"
 	"go-filestorage-server/handlers"
 	"go-filestorage-server/logger"
@@ -27,20 +28,22 @@ func handleConnection(conn net.Conn, waitGroup *sync.WaitGroup) {
 		return
 	}
 
-	// Receive first packet in connection
-	packet, err := utils.ReceiveAndVerifyPacket(conn)
-	if err != nil {
+	// Receive first request in connection
+	request, err := utils.ReceiveAndVerifyPacket(conn)
+	if errors.Is(err, utils.ErrPacketSignature) {
+		protocol.SendResponse(conn, false, &protocol.ResponseDescription{Description: "Invalid request signature"})
+	} else if err != nil {
 		logger.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
 		return
 	}
 
 	// Select handler function depending on the type of package
-	switch packet.Type {
+	switch request.Type {
 	case protocol.REQ_GET_USERNAME:
-		handlers.GetUsername(conn, packet)
+		handlers.GetUsername(conn, request)
 	case protocol.REQ_SET_USERNAME:
-		handlers.SetUsername(conn, packet)
+		handlers.SetUsername(conn, request)
 	default:
-		protocol.SendDescription(conn, false, "Invalid request type")
+		protocol.SendResponse(conn, false, &protocol.ResponseDescription{Description: "Invalid request type"})
 	}
 }

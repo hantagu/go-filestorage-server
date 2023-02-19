@@ -19,7 +19,7 @@ func main() {
 	db.Init()
 
 	// Create User Data directory if it doesn't exist
-	if err := os.Mkdir(config.Config.UserdataPath, 0o700); !errors.Is(err, os.ErrExist) {
+	if err := os.Mkdir(config.Config.UserdataPath, 0o777); err != nil && !errors.Is(err, os.ErrExist) {
 		logger.Logger.Fatalln(err)
 	}
 

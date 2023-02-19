@@ -17,21 +17,30 @@ type ResponseDescription struct {
 	Description string `bson:"description"` // Description
 }
 
-func SendDescription(conn net.Conn, successful bool, description string) {
-
-	desc := ResponseDescription{description}
-	raw_desc, _ := bson.Marshal(desc)
-
-	response := Response{successful, raw_desc}
-	raw_response, _ := bson.Marshal(response)
-
-	conn.Write(raw_response)
-}
-
 type GetUsernameResponseData struct {
 	Username string `bson:"username"`
 }
 
 type SetUsernameResponseData struct {
 	// TODO
+}
+
+type UploadFileMetadataResponseData struct {
+	// TODO
+}
+
+type UploadFileContentResponseData struct {
+	// TODO
+}
+
+func SendResponse(conn net.Conn, successful bool, response_data interface{}) {
+
+	raw_response_data, _ := bson.Marshal(response_data)
+
+	raw_response, _ := bson.Marshal(&Response{
+		Successful: successful,
+		Data:       raw_response_data,
+	})
+
+	conn.Write(raw_response)
 }
