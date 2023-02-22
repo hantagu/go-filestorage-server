@@ -64,16 +64,35 @@ func SetUsername(public_key ed25519.PublicKey, username string) error {
 	return nil
 }
 
-func InsertFileMetadata(file_id primitive.ObjectID, file_owner ed25519.PublicKey, file_name string) error {
+func GetFileMetadata(owner ed25519.PublicKey, name string) (*db_types.File, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+
+	file_metadata := &db_types.File{}
+	err := FilesCollection.FindOne(ctx, bson.D{
+		{Key: "owner", Value: owner},
+		{Key: "name", Value: name},
+	}).Decode(file_metadata)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return file_metadata, nil
+}
+
+func InsertFileMetadata(ID primitive.ObjectID, owner ed25519.PublicKey, name string, encrypted bool) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 
 	_, err := FilesCollection.InsertOne(ctx, &db_types.File{
-		ID:     file_id,
-		Owner:  file_owner,
-		Name:   file_name,
-		Access: []ed25519.PublicKey{},
+		ID:        ID,
+		Owner:     owner,
+		Name:      name,
+		Encrypted: encrypted,
+		Access:    []ed25519.PublicKey{},
 	})
 
 	if err != nil {
@@ -81,6 +100,20 @@ func InsertFileMetadata(file_id primitive.ObjectID, file_owner ed25519.PublicKey
 	}
 
 	return nil
+}
+
+func DeleteFileMetadataByID(ID primitive.ObjectID) (int, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+
+	delete_result, err := FilesCollection.DeleteOne(ctx,
+		bson.D{
+			{Key: "_id", Value: ID},
+		},
+	)
+
+	return int(delete_result.DeletedCount), err
 }
 
 func DeleteFileMetadata(file_owner ed25519.PublicKey, file_name string) (int, error) {

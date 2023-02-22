@@ -13,17 +13,17 @@ import (
 func GetUsername(conn net.Conn, request *protocol.Request) {
 
 	// Unmarshal request data
-	request_data := &protocol.GetUsernameRequestData{}
+	request_data := &protocol.PublicKey{}
 	if err := bson.Unmarshal(request.Data, request_data); err != nil {
-		protocol.SendResponse(conn, false, &protocol.ResponseDescription{Description: err.Error()})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 		return
 	}
 
 	if result, err := db.GetUsername(request.PublicKey); errors.Is(err, mongo.ErrNoDocuments) {
-		protocol.SendResponse(conn, false, &protocol.ResponseDescription{Description: "This public key does not match any username"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "This public key does not match any username"})
 	} else if err != nil {
-		protocol.SendResponse(conn, false, &protocol.ResponseDescription{Description: err.Error()})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 	} else {
-		protocol.SendResponse(conn, true, &protocol.GetUsernameResponseData{Username: result})
+		protocol.SendResponse(conn, true, &protocol.Username{Username: result})
 	}
 }
