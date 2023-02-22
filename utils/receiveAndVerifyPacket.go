@@ -16,7 +16,7 @@ var ErrPacketSignature = errors.New("invalid packet signature")
 
 func ReceiveAndVerifyPacket(conn net.Conn) (*protocol.Request, error) {
 
-	buffer := make([]byte, config.PROTO_BSON_DOCUMENT_LENGTH_SIZE)
+	buffer := make([]byte, config.PROTOCOL_BSON_DOCUMENT_LENGTH_SIZE)
 
 	// Read first 4 bytes (according to BSON documentation) which indicate the size of the entire BSON document
 	if _, err := io.ReadFull(conn, buffer); err != nil {
@@ -24,11 +24,11 @@ func ReceiveAndVerifyPacket(conn net.Conn) (*protocol.Request, error) {
 	}
 
 	// Convert bytes to a UInt32 (4-byte) value
-	packetLength := binary.LittleEndian.Uint32(buffer) - config.PROTO_BSON_DOCUMENT_LENGTH_SIZE
+	packetLength := binary.LittleEndian.Uint32(buffer) - config.PROTOCOL_BSON_DOCUMENT_LENGTH_SIZE
 
 	// Read BSON document
 	buffer = append(buffer, make([]byte, packetLength)...)
-	if _, err := io.ReadFull(conn, buffer[config.PROTO_BSON_DOCUMENT_LENGTH_SIZE:]); err != nil {
+	if _, err := io.ReadFull(conn, buffer[config.PROTOCOL_BSON_DOCUMENT_LENGTH_SIZE:]); err != nil {
 		return nil, err
 	}
 
