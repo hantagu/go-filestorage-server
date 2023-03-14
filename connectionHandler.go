@@ -43,6 +43,8 @@ func handleConnection(conn net.Conn, waitGroup *sync.WaitGroup) {
 		handlers.GetUsername(conn, request)
 	case protocol.REQ_SET_USERNAME:
 		handlers.SetUsername(conn, request)
+	case protocol.REQ_LIST_FILES:
+		handlers.ListFiles(conn, request)
 	case protocol.REQ_UPLOAD_FILE:
 		handlers.UploadFile(conn, request)
 	case protocol.REQ_DOWNLOAD_FILE:

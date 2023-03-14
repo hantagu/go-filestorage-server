@@ -82,6 +82,35 @@ func GetFileMetadata(owner ed25519.PublicKey, name string) (*db_types.File, erro
 	return file_metadata, nil
 }
 
+func GetAllFilesMetadata(public_key ed25519.PublicKey) ([]db_types.File, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+
+	cur, err := FilesCollection.Find(ctx, bson.D{
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "owner", Value: public_key}},
+			bson.D{{Key: "access", Value: public_key}},
+		}},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+
+	result := []db_types.File{}
+	err = cur.All(ctx, &result)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 func InsertFileMetadata(ID primitive.ObjectID, owner ed25519.PublicKey, name string, encrypted bool) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)

@@ -9,6 +9,7 @@ import (
 	"go-filestorage-server/utils"
 	"net"
 	"os"
+	"regexp"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -35,6 +36,9 @@ func UploadFile(conn net.Conn, request *protocol.Request) {
 		goto exit
 	} else if request_data.Parts == 0 {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "File cannot be empty"})
+		goto exit
+	} else if !regexp.MustCompile(`[a-zA-Z0-9._]{5,}`).MatchString(request_data.Name) {
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Invalid file name"})
 		goto exit
 	}
 

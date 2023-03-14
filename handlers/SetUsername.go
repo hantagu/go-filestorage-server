@@ -20,7 +20,7 @@ func SetUsername(conn net.Conn, request *protocol.Request) {
 	}
 
 	// Check username with regular expression
-	if !regexp.MustCompile(`[a-z0-9_]{5,}`).MatchString(request_data.Username) {
+	if !regexp.MustCompile(`^[a-z0-9_]{5,}$`).MatchString(request_data.Username) {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "You can only use the characters a-z, 0-9 and the underscore character and minimum length is 5 characters"})
 		return
 	}
