@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"go-filestorage-server/config"
-	"go-filestorage-server/logger"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -18,31 +17,28 @@ var (
 	FilesCollection *mongo.Collection
 )
 
-func Init() {
+func Init() error {
 
 	// Create new client with URI from config
 	opts := options.Client()
 	opts.ApplyURI(config.Config.MongoDB_URI)
 	var err error
 	if Client, err = mongo.NewClient(opts); err != nil {
-		logger.Logger.Fatalln(err)
-		return
+		return err
 	}
 
 	// Connect to MongoDB
 	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	if err := Client.Connect(ctx); err != nil {
-		logger.Logger.Fatalln(err)
-		return
+		return err
 	}
 
 	// Ping MongoDB server
 	ctx, cancel = context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	if err := Client.Ping(ctx, nil); err != nil {
-		logger.Logger.Fatalln(err)
-		return
+		return err
 	}
 
 	Database = Client.Database(config.Config.MongoDB_DB)
@@ -72,4 +68,6 @@ func Init() {
 		Keys:    bson.D{{Key: "owner", Value: 1}, {Key: "name", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
+
+	return nil
 }

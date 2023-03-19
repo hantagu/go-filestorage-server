@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"go-filestorage-server/config"
 	"go-filestorage-server/db"
-	"go-filestorage-server/logger"
 	"go-filestorage-server/protocol"
-	"go-filestorage-server/utils"
 	"net"
 	"os"
 	"regexp"
@@ -23,7 +21,6 @@ func UploadFile(conn net.Conn, request *protocol.Request) {
 
 	file, err := os.Create(file_path)
 	if err != nil {
-		logger.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 		return
 	}
@@ -37,13 +34,14 @@ func UploadFile(conn net.Conn, request *protocol.Request) {
 	} else if request_data.Parts == 0 {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "File cannot be empty"})
 		goto exit
-	} else if !regexp.MustCompile(`[a-zA-Z0-9._]{5,}`).MatchString(request_data.Name) {
+	} else if !regexp.MustCompile(`^[^[:cntrl:]/]+$`).MatchString(request_data.Name) {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "Invalid file name"})
 		goto exit
 	}
 
 	// Try to insert file metadata to MongoDB
 	if err := db.InsertFileMetadata(file_id, request.PublicKey, request_data.Name, request_data.Encrypted); err != nil {
+
 		if mongo.IsDuplicateKeyError(err) {
 			protocol.SendResponse(conn, false, &protocol.Description{Description: "A file with this name already exists"})
 		} else {
@@ -59,7 +57,7 @@ func UploadFile(conn net.Conn, request *protocol.Request) {
 	// Read all parts of a file
 	for i := uint32(0); i < request_data.Parts; i++ {
 
-		request, err := utils.ReceiveAndVerifyPacket(conn)
+		request, err := protocol.ReceiveAndVerifyPacket(conn)
 
 		if err != nil || request.Type != protocol.REQ_UPLOAD_FILE {
 

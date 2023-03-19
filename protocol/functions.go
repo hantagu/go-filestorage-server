@@ -1,11 +1,10 @@
-package utils
+package protocol
 
 import (
 	"crypto/ed25519"
 	"encoding/binary"
 	"errors"
 	"go-filestorage-server/config"
-	"go-filestorage-server/protocol"
 	"io"
 	"net"
 
@@ -14,7 +13,7 @@ import (
 
 var ErrPacketSignature = errors.New("invalid packet signature")
 
-func ReceiveAndVerifyPacket(conn net.Conn) (*protocol.Request, error) {
+func ReceiveAndVerifyPacket(conn net.Conn) (*Request, error) {
 
 	buffer := make([]byte, config.PROTOCOL_BSON_DOCUMENT_LENGTH_SIZE)
 
@@ -33,7 +32,7 @@ func ReceiveAndVerifyPacket(conn net.Conn) (*protocol.Request, error) {
 	}
 
 	// Decode a BSON document to a generic packet to find out it's type
-	packet := protocol.Request{}
+	packet := Request{}
 	if err := bson.Unmarshal(buffer, &packet); err != nil {
 		return nil, err
 	}
@@ -50,4 +49,16 @@ func ReceiveAndVerifyPacket(conn net.Conn) (*protocol.Request, error) {
 	}
 
 	return &packet, nil
+}
+
+func SendResponse(conn net.Conn, successful bool, response_data interface{}) {
+
+	raw_response_data, _ := bson.Marshal(response_data)
+
+	raw_response, _ := bson.Marshal(&Response{
+		Successful: successful,
+		Data:       raw_response_data,
+	})
+
+	conn.Write(raw_response)
 }

@@ -5,10 +5,9 @@ import (
 	"errors"
 	"go-filestorage-server/config"
 	"go-filestorage-server/handlers"
-	"go-filestorage-server/logger"
 	"go-filestorage-server/protocol"
-	"go-filestorage-server/utils"
 	"io"
+	"log"
 	"net"
 	"sync"
 )
@@ -21,19 +20,19 @@ func handleConnection(conn net.Conn, waitGroup *sync.WaitGroup) {
 	// Check a connection preamble
 	preamble := make([]byte, config.PROTOCOL_PREAMBLE_SIZE)
 	if _, err := io.ReadFull(conn, preamble); err != nil {
-		logger.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
+		log.Default().Printf("%s: %s\n", conn.RemoteAddr(), err)
 		return
 	} else if !bytes.Equal([]byte(config.PROTOCOL_PREAMBLE), preamble) {
-		logger.Logger.Printf("%s: wrong preamble, connection closed\n", conn.RemoteAddr())
+		log.Default().Printf("%s: wrong preamble, connection closed\n", conn.RemoteAddr())
 		return
 	}
 
 	// Receive first request in connection
-	request, err := utils.ReceiveAndVerifyPacket(conn)
-	if errors.Is(err, utils.ErrPacketSignature) {
+	request, err := protocol.ReceiveAndVerifyPacket(conn)
+	if errors.Is(err, protocol.ErrPacketSignature) {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "Invalid request signature"})
 	} else if err != nil {
-		logger.Logger.Printf("%s: %s\n", conn.RemoteAddr(), err)
+		log.Default().Printf("%s: %s\n", conn.RemoteAddr(), err)
 		return
 	}
 

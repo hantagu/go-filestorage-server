@@ -46,12 +46,12 @@ func DownloadFile(conn net.Conn, request *protocol.Request) {
 		if stat.Size()%config.PROTOCOL_CHUNK_SIZE != 0 {
 			parts += 1
 		}
-		protocol.SendResponse(conn, true, &protocol.FileMetadata{Name: file_metadata.Name, Encrypted: false, Parts: uint32(parts)})
+		protocol.SendResponse(conn, true, &protocol.FileMetadata{Name: file_metadata.Name, Encrypted: file_metadata.Encrypted, Parts: uint32(parts)})
 	} else {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 	}
 
-	buffer := make([]byte, 8*1024*1024)
+	buffer := make([]byte, config.PROTOCOL_CHUNK_SIZE)
 	var i uint32 = 0
 	for ; ; i++ {
 

@@ -2,22 +2,9 @@ package protocol
 
 import (
 	"crypto/ed25519"
-	"net"
 
 	"go.mongodb.org/mongo-driver/bson"
 )
-
-func SendResponse(conn net.Conn, successful bool, response_data interface{}) {
-
-	raw_response_data, _ := bson.Marshal(response_data)
-
-	raw_response, _ := bson.Marshal(&Response{
-		Successful: successful,
-		Data:       raw_response_data,
-	})
-
-	conn.Write(raw_response)
-}
 
 // Generic request packet
 type Request struct {
