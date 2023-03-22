@@ -159,3 +159,53 @@ func DeleteFileMetadata(file_owner ed25519.PublicKey, file_name string) (int, er
 
 	return int(delete_result.DeletedCount), err
 }
+
+func GrantAccess(file_owner ed25519.PublicKey, file_name string, public_key ed25519.PublicKey) (bool, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+
+	update_result, err := FilesCollection.UpdateOne(ctx,
+		&bson.D{
+			{Key: "owner", Value: file_owner},
+			{Key: "name", Value: file_name},
+		},
+		&bson.D{
+			{Key: "$addToSet", Value: &bson.D{
+				{Key: "access", Value: public_key},
+			}},
+		},
+	)
+
+	if err != nil || update_result.ModifiedCount == 0 {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func RevokeAccess(file_owner ed25519.PublicKey, file_name string, public_key ed25519.PublicKey) (bool, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+
+	update_result, err := FilesCollection.UpdateOne(ctx,
+		&bson.D{
+			{Key: "owner", Value: file_owner},
+			{Key: "name", Value: file_name},
+		},
+		&bson.D{
+			{Key: "$pull", Value: &bson.D{
+				{Key: "access", Value: public_key},
+			}},
+		},
+	)
+
+	if err != nil {
+		return false, err
+	} else if update_result.ModifiedCount == 0 {
+		return false, nil
+	}
+
+	return true, nil
+}
