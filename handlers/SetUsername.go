@@ -25,6 +25,7 @@ func SetUsername(conn net.Conn, request *protocol.Request) {
 		return
 	}
 
+	// Try to set the username to the public key
 	if err := db.SetUsername(request.PublicKey, request_data.Username); mongo.IsDuplicateKeyError(err) {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "This username is already taken"})
 	} else if err != nil {

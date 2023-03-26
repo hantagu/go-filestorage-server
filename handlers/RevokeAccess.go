@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func GrantAccess(conn net.Conn, request *protocol.Request) {
+func RevokeAccess(conn net.Conn, request *protocol.Request) {
 
 	// Unmarshal request data
 	request_data := &protocol.FileAccess{}
@@ -23,17 +23,17 @@ func GrantAccess(conn net.Conn, request *protocol.Request) {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "Invalid size of public key"})
 		return
 	} else if bytes.Equal(request.PublicKey, request_data.PublicKey) {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "You cannot grant access to your file to yourself"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "You cannot revoke access to your file from yourself"})
 		return
 	}
 
-	// Insert the public key into the file's metadata in the database
-	if matched, modified, err := db.GrantAccess(request.PublicKey, request_data.Name, request_data.PublicKey); err != nil {
+	// Try to remove the public key from the `access` field of file's metadata in the database
+	if matched, modified, err := db.RevokeAccess(request.PublicKey, request_data.Name, request_data.PublicKey); err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 	} else if matched == 0 {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "A file with this name does not exist"})
 	} else if modified == 0 {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "This user already has access to this file"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "This user does not have access to this file"})
 	} else {
 		protocol.SendResponse(conn, true, &protocol.Empty{})
 	}

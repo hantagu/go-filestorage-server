@@ -20,8 +20,7 @@ type Response struct {
 }
 
 // Empty packet data
-type Empty struct {
-}
+type Empty struct{}
 
 // Packet data with simple string description
 type Description struct {
@@ -30,32 +29,38 @@ type Description struct {
 
 // -------------------------------------------------- Users -------------------------------------------------- //
 
-// Packet data with public key
+// Packet data with a public key
 type PublicKey struct {
 	PublicKey ed25519.PublicKey `bson:"public_key"`
 }
 
-// Packet data with username
+// Packet data with a username
 type Username struct {
 	Username string `bson:"username"`
 }
 
 // -------------------------------------------------- Files -------------------------------------------------- //
 
-// Packet data with file name
+// Packet data with a file name
 type FileName struct {
 	Name string `bson:"name"`
 }
 
-// Packet data with file part
-type FilePart struct {
-	Part    uint32 `bson:"part"`
-	Content []byte `bson:"content"`
+// Packet data with file name and public key to which access to this file will be granted / revoked
+type FileAccess struct {
+	Name      string            `bson:"name"`
+	PublicKey ed25519.PublicKey `bson:"public_key"`
 }
 
-// Packet data with file metadata
+// Packet data with a chunk of the file
+type FileChunk struct {
+	Chunk   uint32 `bson:"chunk"`   // Number of this chunk
+	Content []byte `bson:"content"` // Content of this chunk
+}
+
+// Packet data with a metadata of the file
 type FileMetadata struct {
 	Name      string `bson:"name"`      // File name
-	Encrypted bool   `bson:"encrypted"` // Was the file additionally encrypted on the client side?
-	Parts     uint32 `bson:"parts"`     // Total parts
+	Encrypted bool   `bson:"encrypted"` // Was this file additionally encrypted on the client side?
+	Chunks    uint32 `bson:"chunks"`    // Total number of chunks
 }

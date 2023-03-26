@@ -17,6 +17,7 @@ func ListFiles(conn net.Conn, request *protocol.Request) {
 		return
 	}
 
+	// Find the metadata of all files owned by a user
 	result, err := db.GetAllFilesMetadata(request.PublicKey)
 
 	if err != nil {
@@ -24,5 +25,6 @@ func ListFiles(conn net.Conn, request *protocol.Request) {
 		return
 	}
 
+	// Send a response
 	protocol.SendResponse(conn, true, &bson.D{{Key: "files", Value: result}})
 }

@@ -17,7 +17,7 @@ func GetUsername(public_key ed25519.PublicKey) (string, error) {
 	defer cancel()
 
 	result := &db_types.User{}
-	if err := UsersCollection.FindOne(ctx, bson.D{{Key: "public_key", Value: public_key}}).Decode(result); err != nil {
+	if err := UsersCollection.FindOne(ctx, &bson.D{{Key: "public_key", Value: public_key}}).Decode(result); err != nil {
 		return "", err
 	}
 
@@ -30,14 +30,12 @@ func SetUsername(public_key ed25519.PublicKey, username string) error {
 	defer cancel()
 
 	update_result, err := UsersCollection.UpdateOne(ctx,
-		bson.D{
-			{Key: "public_key", Value: public_key},
-		},
-		bson.D{
-			{Key: "$set", Value: bson.D{
-				{Key: "username", Value: username},
-			}},
-		},
+
+		&bson.D{{Key: "public_key", Value: public_key}},
+
+		&bson.D{{Key: "$set", Value: &bson.D{
+			{Key: "username", Value: username},
+		}}},
 	)
 
 	if err != nil {
@@ -64,15 +62,20 @@ func SetUsername(public_key ed25519.PublicKey, username string) error {
 	return nil
 }
 
-func GetFileMetadata(owner ed25519.PublicKey, name string) (*db_types.File, error) {
+func GetFileMetadata(public_key ed25519.PublicKey, name string) (*db_types.File, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 
 	file_metadata := &db_types.File{}
-	err := FilesCollection.FindOne(ctx, bson.D{
-		{Key: "owner", Value: owner},
-		{Key: "name", Value: name},
+	err := FilesCollection.FindOne(ctx, &bson.D{
+		{Key: "$and", Value: &bson.A{
+			&bson.D{{Key: "$or", Value: &bson.A{
+				&bson.D{{Key: "owner", Value: public_key}},
+				&bson.D{{Key: "access", Value: public_key}},
+			}}},
+			&bson.D{{Key: "name", Value: name}},
+		}},
 	}).Decode(file_metadata)
 
 	if err != nil {
@@ -87,10 +90,10 @@ func GetAllFilesMetadata(public_key ed25519.PublicKey) ([]db_types.File, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 
-	cur, err := FilesCollection.Find(ctx, bson.D{
-		{Key: "$or", Value: bson.A{
-			bson.D{{Key: "owner", Value: public_key}},
-			bson.D{{Key: "access", Value: public_key}},
+	cur, err := FilesCollection.Find(ctx, &bson.D{
+		{Key: "$or", Value: &bson.A{
+			&bson.D{{Key: "owner", Value: public_key}},
+			&bson.D{{Key: "access", Value: public_key}},
 		}},
 	})
 
@@ -131,81 +134,77 @@ func InsertFileMetadata(ID primitive.ObjectID, owner ed25519.PublicKey, name str
 	return nil
 }
 
-func DeleteFileMetadataByID(ID primitive.ObjectID) (int, error) {
+func DeleteFileMetadataByID(ID primitive.ObjectID) (*db_types.File, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 
-	delete_result, err := FilesCollection.DeleteOne(ctx,
-		bson.D{
-			{Key: "_id", Value: ID},
-		},
-	)
-
-	return int(delete_result.DeletedCount), err
-}
-
-func DeleteFileMetadata(file_owner ed25519.PublicKey, file_name string) (int, error) {
-
-	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
-	defer cancel()
-
-	delete_result, err := FilesCollection.DeleteOne(ctx,
-		bson.D{
-			{Key: "owner", Value: file_owner},
-			{Key: "name", Value: file_name},
-		},
-	)
-
-	return int(delete_result.DeletedCount), err
-}
-
-func GrantAccess(file_owner ed25519.PublicKey, file_name string, public_key ed25519.PublicKey) (bool, error) {
-
-	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
-	defer cancel()
-
-	update_result, err := FilesCollection.UpdateOne(ctx,
-		&bson.D{
-			{Key: "owner", Value: file_owner},
-			{Key: "name", Value: file_name},
-		},
-		&bson.D{
-			{Key: "$addToSet", Value: &bson.D{
-				{Key: "access", Value: public_key},
-			}},
-		},
-	)
-
-	if err != nil || update_result.ModifiedCount == 0 {
-		return false, err
-	}
-
-	return true, nil
-}
-
-func RevokeAccess(file_owner ed25519.PublicKey, file_name string, public_key ed25519.PublicKey) (bool, error) {
-
-	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
-	defer cancel()
-
-	update_result, err := FilesCollection.UpdateOne(ctx,
-		&bson.D{
-			{Key: "owner", Value: file_owner},
-			{Key: "name", Value: file_name},
-		},
-		&bson.D{
-			{Key: "$pull", Value: &bson.D{
-				{Key: "access", Value: public_key},
-			}},
-		},
-	)
+	file_metadata := &db_types.File{}
+	err := FilesCollection.FindOneAndDelete(ctx, &bson.D{{Key: "_id", Value: ID}}).Decode(file_metadata)
 
 	if err != nil {
-		return false, err
-	} else if update_result.ModifiedCount == 0 {
-		return false, nil
+		return nil, err
 	}
 
-	return true, nil
+	return file_metadata, nil
+}
+
+func DeleteFileMetadata(file_owner ed25519.PublicKey, file_name string) (*db_types.File, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+
+	file_metadata := &db_types.File{}
+	err := FilesCollection.FindOneAndDelete(ctx,
+		&bson.D{{Key: "$and", Value: &bson.A{
+			&bson.D{{Key: "owner", Value: file_owner}},
+			&bson.D{{Key: "name", Value: file_name}},
+		}}},
+	).Decode(file_metadata)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return file_metadata, nil
+}
+
+func GrantAccess(file_owner ed25519.PublicKey, file_name string, public_key ed25519.PublicKey) (int, int, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+
+	update_result, err := FilesCollection.UpdateOne(ctx,
+
+		&bson.D{{Key: "$and", Value: &bson.A{
+			&bson.D{{Key: "owner", Value: file_owner}},
+			&bson.D{{Key: "name", Value: file_name}},
+		}}},
+
+		&bson.D{{Key: "$addToSet", Value: &bson.D{
+			{Key: "access", Value: public_key},
+		}}},
+	)
+
+	return int(update_result.MatchedCount), int(update_result.ModifiedCount), err
+}
+
+func RevokeAccess(file_owner ed25519.PublicKey, file_name string, public_key ed25519.PublicKey) (int, int, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+
+	update_result, err := FilesCollection.UpdateOne(ctx,
+
+		&bson.D{{Key: "$and", Value: &bson.A{
+			&bson.D{{Key: "owner", Value: file_owner}},
+			&bson.D{{Key: "name", Value: file_name}},
+		}}},
+
+		&bson.D{{Key: "$pull", Value: &bson.D{
+			{Key: "access", Value: public_key},
+		}}},
+	)
+
+	return int(update_result.MatchedCount), int(update_result.ModifiedCount), err
 }

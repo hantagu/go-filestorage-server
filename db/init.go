@@ -19,7 +19,7 @@ var (
 
 func Init() error {
 
-	// Create new client with URI from config
+	// Create a new client with URI from the config
 	opts := options.Client()
 	opts.ApplyURI(config.Config.MongoDB_URI)
 	var err error
@@ -27,14 +27,14 @@ func Init() error {
 		return err
 	}
 
-	// Connect to MongoDB
+	// Connect to the MongoDB server
 	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	if err := Client.Connect(ctx); err != nil {
 		return err
 	}
 
-	// Ping MongoDB server
+	// Ping the MongoDB server
 	ctx, cancel = context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	if err := Client.Ping(ctx, nil); err != nil {
@@ -45,7 +45,7 @@ func Init() error {
 	UsersCollection = Database.Collection(config.Config.MongoDB_UsersCollection)
 	FilesCollection = Database.Collection(config.Config.MongoDB_FilesCollection)
 
-	// Make the `public_key` field unique in Users collection
+	// Make the `public_key` field unique in the Users collection
 	ctx, cancel = context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	UsersCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
@@ -53,7 +53,7 @@ func Init() error {
 		Options: options.Index().SetUnique(true),
 	})
 
-	// Make the `username` field unique in Users collection
+	// Make the `username` field unique in the Users collection
 	ctx, cancel = context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	UsersCollection.Indexes().CreateOne(ctx, mongo.IndexModel{

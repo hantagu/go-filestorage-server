@@ -20,7 +20,7 @@ func main() {
 	config.Init()
 
 	if err := db.Init(); err != nil {
-		log.Default().Fatal("Failed to connect to MongoDB\n\nTry running an existing Docker container with MongoDB:\n\tdocker start -ai filestorage_db\n\nOr create a new Docker container with MongoDB:\n\tdocker run -p 127.0.0.1:27017:27017 --name filestorage_db mongo\n\n")
+		log.Default().Fatal("Failed to connect to MongoDB\n\nTry running an existing Docker container with MongoDB:\n\tdocker start filestorage_db\n\nOr create a new Docker container with MongoDB:\n\tdocker run -d -p 127.0.0.1:27017:27017 --name filestorage_db mongo\n\n")
 	}
 
 	// Create User Data directory if it doesn't exist

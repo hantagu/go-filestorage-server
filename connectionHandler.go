@@ -17,7 +17,7 @@ func handleConnection(conn net.Conn, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 	defer conn.Close()
 
-	// Check a connection preamble
+	// Check the connection preamble
 	preamble := make([]byte, config.PROTOCOL_PREAMBLE_SIZE)
 	if _, err := io.ReadFull(conn, preamble); err != nil {
 		log.Default().Printf("%s: %s\n", conn.RemoteAddr(), err)
@@ -27,7 +27,7 @@ func handleConnection(conn net.Conn, waitGroup *sync.WaitGroup) {
 		return
 	}
 
-	// Receive first request in connection
+	// Receive first request in this connection
 	request, err := protocol.ReceiveAndVerifyPacket(conn)
 	if errors.Is(err, protocol.ErrPacketSignature) {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "Invalid request signature"})
@@ -36,7 +36,7 @@ func handleConnection(conn net.Conn, waitGroup *sync.WaitGroup) {
 		return
 	}
 
-	// Select handler function depending on the type of package
+	// Select a handler function depending on the type of packet
 	switch request.Type {
 	case protocol.REQ_GET_USERNAME:
 		handlers.GetUsername(conn, request)
@@ -48,6 +48,12 @@ func handleConnection(conn net.Conn, waitGroup *sync.WaitGroup) {
 		handlers.UploadFile(conn, request)
 	case protocol.REQ_DOWNLOAD_FILE:
 		handlers.DownloadFile(conn, request)
+    case protocol.REQ_DELETE_FILE:
+		handlers.DeleteFile(conn, request)
+	case protocol.REQ_GRANT_ACCESS:
+		handlers.GrantAccess(conn, request)
+	case protocol.REQ_REVOKE_ACCESS:
+		handlers.RevokeAccess(conn, request)
 	default:
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "Invalid request type"})
 	}

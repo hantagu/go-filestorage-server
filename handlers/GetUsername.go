@@ -19,6 +19,7 @@ func GetUsername(conn net.Conn, request *protocol.Request) {
 		return
 	}
 
+	// Find the username in the database
 	if result, err := db.GetUsername(request.PublicKey); errors.Is(err, mongo.ErrNoDocuments) {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "This public key does not match any username"})
 	} else if err != nil {

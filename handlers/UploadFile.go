@@ -26,12 +26,12 @@ func UploadFile(conn net.Conn, request *protocol.Request) {
 	}
 	defer file.Close()
 
-	// Unmarshal file metadata
+	// Unmarshal file's metadata
 	request_data := &protocol.FileMetadata{}
 	if err := bson.Unmarshal(request.Data, request_data); err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 		goto exit
-	} else if request_data.Parts == 0 {
+	} else if request_data.Chunks == 0 {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "File cannot be empty"})
 		goto exit
 	} else if !regexp.MustCompile(`^[^[:cntrl:]/]+$`).MatchString(request_data.Name) {
@@ -39,7 +39,7 @@ func UploadFile(conn net.Conn, request *protocol.Request) {
 		goto exit
 	}
 
-	// Try to insert file metadata to MongoDB
+	// Try to insert the file metadata to the MongoDB
 	if err := db.InsertFileMetadata(file_id, request.PublicKey, request_data.Name, request_data.Encrypted); err != nil {
 
 		if mongo.IsDuplicateKeyError(err) {
@@ -51,11 +51,11 @@ func UploadFile(conn net.Conn, request *protocol.Request) {
 		goto exit
 	}
 
-	// If the metadata is successfully inserted into MongoDB, then answer that the server is ready to receive the file
+	// If the metadata is successfully inserted into MongoDB, then answer that the server is ready to receive chunks of this file
 	protocol.SendResponse(conn, true, &protocol.Empty{})
 
-	// Read all parts of a file
-	for i := uint32(0); i < request_data.Parts; i++ {
+	// Read all chunks of the file
+	for i := uint32(0); i < request_data.Chunks; i++ {
 
 		request, err := protocol.ReceiveAndVerifyPacket(conn)
 
@@ -70,7 +70,7 @@ func UploadFile(conn net.Conn, request *protocol.Request) {
 			goto exit
 		}
 
-		request_data := &protocol.FilePart{}
+		request_data := &protocol.FileChunk{}
 		if err := bson.Unmarshal(request.Data, request_data); err != nil {
 			protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 			goto exit

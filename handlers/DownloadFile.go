@@ -23,7 +23,7 @@ func DownloadFile(conn net.Conn, request *protocol.Request) {
 		return
 	}
 
-	// Search file metadata in database
+	// Find file's metadata in the database
 	file_metadata, err := db.GetFileMetadata(request.PublicKey, request_data.Name)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "A file with this name does not exist"})
@@ -42,23 +42,27 @@ func DownloadFile(conn net.Conn, request *protocol.Request) {
 
 	// Calculate a number of chunks
 	if stat, err := file.Stat(); err == nil {
-		parts := stat.Size() / config.PROTOCOL_CHUNK_SIZE
+
+		chunks := stat.Size() / config.PROTOCOL_CHUNK_SIZE
+
 		if stat.Size()%config.PROTOCOL_CHUNK_SIZE != 0 {
-			parts += 1
+			chunks += 1
 		}
-		protocol.SendResponse(conn, true, &protocol.FileMetadata{Name: file_metadata.Name, Encrypted: file_metadata.Encrypted, Parts: uint32(parts)})
+
+		protocol.SendResponse(conn, true, &protocol.FileMetadata{Name: file_metadata.Name, Encrypted: file_metadata.Encrypted, Chunks: uint32(chunks)})
+
 	} else {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 	}
 
+	// Send all chunks of a file
 	buffer := make([]byte, config.PROTOCOL_CHUNK_SIZE)
-	var i uint32 = 0
-	for ; ; i++ {
+	for i := uint32(0); ; i++ {
 
 		n, err := io.ReadFull(file, buffer)
 
 		if n > 0 {
-			protocol.SendResponse(conn, true, &protocol.FilePart{Part: i, Content: buffer[:n]})
+			protocol.SendResponse(conn, true, &protocol.FileChunk{Chunk: i, Content: buffer[:n]})
 		}
 
 		if errors.Is(err, io.EOF) {

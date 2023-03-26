@@ -7,6 +7,7 @@ const (
 	REQ_LIST_FILES    = "list_files"
 	REQ_UPLOAD_FILE   = "upload_file"
 	REQ_DOWNLOAD_FILE = "download_file"
+	REQ_DELETE_FILE   = "delete_file"
 
 	REQ_GRANT_ACCESS  = "grant_access"
 	REQ_REVOKE_ACCESS = "revoke_access"
