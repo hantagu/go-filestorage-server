@@ -7,7 +7,7 @@ import (
 )
 
 type User struct {
-	ID        primitive.ObjectID `bson:"_id"`        // Unique user ID
-	PublicKey ed25519.PublicKey  `bson:"public_key"` // User's public key
-	Username  string             `bson:"username"`   // Unique username associated with public key
+	ID        primitive.ObjectID `bson:"_id"`        // Уникальный ID пользователя, генерируемый MongoDB
+	PublicKey ed25519.PublicKey  `bson:"public_key"` // Публичный ключ
+	Username  string             `bson:"username"`   // Имя пользователя
 }

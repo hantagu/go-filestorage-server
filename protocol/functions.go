@@ -11,39 +11,39 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var ErrPacketSignature = errors.New("invalid packet signature")
+var ErrPacketSignature = errors.New("неверная криптографическая подпись пакета")
 
 func ReceiveAndVerifyPacket(conn net.Conn) (*Request, error) {
 
 	buffer := make([]byte, config.PROTOCOL_BSON_DOCUMENT_LENGTH_SIZE)
 
-	// Read first 4 bytes (according to BSON documentation) which indicate the size of the entire BSON document
+	// Чтение первых 4 байт (согласно документации BSON), которые указывают размер всего BSON документа
 	if _, err := io.ReadFull(conn, buffer); err != nil {
 		return nil, err
 	}
 
-	// Convert bytes to a UInt32 (4-byte) value
+	// Конвертация байтов в значение типа UInt32
 	packetLength := binary.LittleEndian.Uint32(buffer) - config.PROTOCOL_BSON_DOCUMENT_LENGTH_SIZE
 
-	// Read BSON document
+	// Чтение всего BSON документа
 	buffer = append(buffer, make([]byte, packetLength)...)
 	if _, err := io.ReadFull(conn, buffer[config.PROTOCOL_BSON_DOCUMENT_LENGTH_SIZE:]); err != nil {
 		return nil, err
 	}
 
-	// Decode a BSON document to a generic packet to find out it's type
+	// Десериализация BSON документа в структуру пакета общего типа
 	packet := Request{}
 	if err := bson.Unmarshal(buffer, &packet); err != nil {
 		return nil, err
 	}
 
-	// Receiving a signature bytes
+	// Получение байтов подписи
 	signature := make([]byte, ed25519.SignatureSize)
 	if _, err := io.ReadFull(conn, signature); err != nil {
 		return nil, err
 	}
 
-	// Check a packet signature
+	// Проверка криптографической подписи
 	if !ed25519.Verify(packet.PublicKey, buffer, signature) {
 		return nil, ErrPacketSignature
 	}

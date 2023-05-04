@@ -15,27 +15,27 @@ import (
 
 func DeleteFile(conn net.Conn, request *protocol.Request) {
 
-	// Unmarshal request data
+	// Десериализация данных из запроса
 	request_data := &protocol.FileName{}
 	if err := bson.Unmarshal(request.Data, request_data); err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 		return
 	}
 
-	// Delete file's metadata from the database
+	// Удаление метаданных файла из базы данных
 	file_metadata, err := db.DeleteFileMetadata(request.PublicKey, request_data.Name)
 
 	if errors.Is(err, mongo.ErrNoDocuments) {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "A file with this name does not exist"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Файл с таким именем не существует"})
 		return
 	} else if err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 		return
 	}
 
-	// Delete a file
+	// Удаление самого файла
 	os.Remove(fmt.Sprintf("%s%c%s", config.Config.UserdataPath, os.PathSeparator, file_metadata.ID.Hex()))
 
-	// Send a response
+	// Отправка ответа
 	protocol.SendResponse(conn, true, &protocol.Empty{})
 }

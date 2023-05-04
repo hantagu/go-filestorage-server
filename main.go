@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/signal"
 	"sync"
-	"syscall"
 )
 
 func main() {
@@ -20,48 +19,48 @@ func main() {
 	config.Init()
 
 	if err := db.Init(); err != nil {
-		log.Default().Fatal("Failed to connect to MongoDB\n\nTry running an existing Docker container with MongoDB:\n\tdocker start filestorage_db\n\nOr create a new Docker container with MongoDB:\n\tdocker run -d -p 127.0.0.1:27017:27017 --name filestorage_db mongo\n\n")
+		log.Default().Fatal("Не удалось подключиться к MongoDB\n\nПопробуйте запустить MongoDB в существующем Docker-контейнере:\n\tdocker start filestorage_db\n\nИли запустите новый:\n\tdocker run -d -p 127.0.0.1:27017:27017 --name filestorage_db mongo\n\n")
 	}
 
-	// Create User Data directory if it doesn't exist
+	// Создание директории, в которой будут храниться все файлы пользователей, если она не существует
 	if err := os.Mkdir(config.Config.UserdataPath, 0o777); err != nil && !errors.Is(err, os.ErrExist) {
 		log.Default().Fatalln(err)
 	}
 
-	// Load a TLS server certificate
+	// Загрузка TLS сертификата сервера
 	tlsCert, err := tls.LoadX509KeyPair(config.Config.TLSCertificatePath, config.Config.TLSKeyPath)
 	if err != nil {
 		log.Default().Fatalln(err)
 	}
 
-	// Create a TLS server configuration with the loaded certificate and the minimum TLS 1.2 version
+	// Создание конфигурации TLS сервера с загруженным сертификатом и минимальной версией протокола TLS 1.2
 	tlsConfig := &tls.Config{
 		MinVersion:   tls.VersionTLS12,
 		MaxVersion:   tls.VersionTLS13,
 		Certificates: []tls.Certificate{tlsCert},
 	}
 
-	// Start a TLS listener
+	// Запуск TLS сервера
 	listener, err := tls.Listen("tcp", config.Config.ListenAddress, tlsConfig)
 	if err != nil {
 		log.Default().Fatalln(err)
 	}
 
-	log.Default().Printf("The listener has been started on %s\n", listener.Addr())
+	log.Default().Printf("Сервер был запущен и ожидает подключений по адресу %s\nНажмите Ctrl-C для завершения работы", listener.Addr())
 
-	// Create a channel to receive signals from OS
+	// Создание канала для получения сигналов из операционной системы
 	shutdownChan := make(chan os.Signal, 1)
-	signal.Notify(shutdownChan, syscall.SIGINT)
+	signal.Notify(shutdownChan, os.Interrupt)
 
-	// Create a WaitGroup that will wait for all connections currently being processed to complete
+	// Создание объекта WaitGroup, который будет ожидать завершения всех соединений
 	waitGroup := &sync.WaitGroup{}
 
 	go func() {
 		for range shutdownChan {
-			log.Default().Println("\nWaiting for the completion of the current connections.\nPress Ctrl-C again to force shutdown")
+			log.Default().Println("\nОжидание завершения всех соединений...\nНажмите Ctrl-C снова, чтобы завершить работу принудительно")
 			go func() {
 				for range shutdownChan {
-					log.Default().Println("\nForced shutdown")
+					log.Default().Println("\nПринудительное завершение работы")
 					listener.Close()
 					os.Exit(0)
 				}
@@ -72,25 +71,25 @@ func main() {
 		}
 	}()
 
-	// Endless loop that accepts new connections
+	// Бесконечный цикл, принимающий новые соединения
 	for {
 		conn, err := listener.Accept()
 
-		// This error is returned when the Listener is closed
+		// Эта ошибка возвращается, когда сервер прекращает принимать новые соединения
 		if errors.Is(err, net.ErrClosed) {
-			log.Default().Println("Server successfully stopped")
+			log.Default().Println("Сервер успешно остановлен")
 			break
 		} else if err != nil {
-			log.Default().Printf("Connection accept error: %s\n", err)
+			log.Default().Printf("%s: Ошибка при принятии нового соединения: %s\n", conn.RemoteAddr(), err)
 			continue
 		}
 
-		log.Default().Printf("Accepted a new connection from %s\n", conn.RemoteAddr())
+		log.Default().Printf("Принято новое соединение от %s\n", conn.RemoteAddr())
 
-		// Add this connection to a WaitGroup
+		// Добавление этого соединения к "счётчику"
 		waitGroup.Add(1)
 
-		// Run a goroutine to handle accepted connection
+		// Запуск горутины, которая будет обрабатывать это соединение
 		go handleConnection(conn, waitGroup)
 	}
 }

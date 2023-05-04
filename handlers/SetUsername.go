@@ -12,22 +12,22 @@ import (
 
 func SetUsername(conn net.Conn, request *protocol.Request) {
 
-	// Unmarshal request data
+	// Десериализация данных из запроса
 	request_data := &protocol.Username{}
 	if err := bson.Unmarshal(request.Data, request_data); err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 		return
 	}
 
-	// Check username with regular expression
+	// Проверка допустимости имени пользователя при помощи регулярного выражения
 	if !regexp.MustCompile(`^[a-z0-9_]{5,}$`).MatchString(request_data.Username) {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "You can only use the characters a-z, 0-9 and the underscore character and minimum length is 5 characters"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Вы можете использовать только символы a-z, 0-9 и символ подчеркивания, также минимальная длина имени пользователя должна быть не менее 5 символов"})
 		return
 	}
 
-	// Try to set the username to the public key
+	// Попытка изменить имя пользователя и сохранить изменения в базе данных
 	if err := db.SetUsername(request.PublicKey, request_data.Username); mongo.IsDuplicateKeyError(err) {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "This username is already taken"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Это имя пользователя уже занято"})
 	} else if err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 	} else {

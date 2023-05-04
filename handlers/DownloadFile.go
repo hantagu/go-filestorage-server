@@ -16,31 +16,31 @@ import (
 
 func DownloadFile(conn net.Conn, request *protocol.Request) {
 
-	// Unmarshal request data
+	// Десериализация данных из запроса
 	request_data := &protocol.FileName{}
 	if err := bson.Unmarshal(request.Data, request_data); err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 		return
 	}
 
-	// Find file's metadata in the database
+	// Поиск метаданных файла в базе данных
 	file_metadata, err := db.GetFileMetadata(request.PublicKey, request_data.Name)
 	if errors.Is(err, mongo.ErrNoDocuments) {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "A file with this name does not exist"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Файл с таким именем не существует"})
 		return
 	} else if err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 		return
 	}
 
-	// Open a file
+	// Открытие файла на чтение
 	file, err := os.Open(fmt.Sprintf("%s%c%s", config.Config.UserdataPath, os.PathSeparator, file_metadata.ID.Hex()))
 	if err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 		return
 	}
 
-	// Calculate a number of chunks
+	// Расчёт количества блоков, на которые файл будет разбит в процессе передачи
 	if stat, err := file.Stat(); err == nil {
 
 		chunks := stat.Size() / config.PROTOCOL_CHUNK_SIZE
@@ -55,7 +55,7 @@ func DownloadFile(conn net.Conn, request *protocol.Request) {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 	}
 
-	// Send all chunks of a file
+	// Отправка всех блоков в сокет
 	buffer := make([]byte, config.PROTOCOL_CHUNK_SIZE)
 	for i := uint32(0); ; i++ {
 

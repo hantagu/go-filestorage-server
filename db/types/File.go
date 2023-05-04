@@ -7,9 +7,9 @@ import (
 )
 
 type File struct {
-	ID        primitive.ObjectID  `bson:"_id"`       // Unique file ID
-	Owner     ed25519.PublicKey   `bson:"owner"`     // Owner's public key
-	Name      string              `bson:"name"`      // Name of file given by user
-	Encrypted bool                `bson:"encrypted"` // Was the file additionally encrypted on the client side?
-	Access    []ed25519.PublicKey `bson:"access"`    // Public keys with read access for this file
+	ID        primitive.ObjectID  `bson:"_id"`       // Уникальный ID файла, генерируемый MongoDB
+	Owner     ed25519.PublicKey   `bson:"owner"`     // Публичный ключ владельца файла
+	Name      string              `bson:"name"`      // Имя файла
+	Encrypted bool                `bson:"encrypted"` // Был ли файл дополнительно зашифрован на стороне клиента?
+	Access    []ed25519.PublicKey `bson:"access"`    // Список публичных ключей других пользователей, которым разрешён доступ на чтение к этому файлу
 }

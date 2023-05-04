@@ -12,7 +12,7 @@ import (
 
 func RevokeAccess(conn net.Conn, request *protocol.Request) {
 
-	// Unmarshal request data
+	// Десериализация данных из запроса
 	request_data := &protocol.FileAccess{}
 	if err := bson.Unmarshal(request.Data, request_data); err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
@@ -20,20 +20,20 @@ func RevokeAccess(conn net.Conn, request *protocol.Request) {
 	}
 
 	if len(request_data.PublicKey) != ed25519.PublicKeySize {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "Invalid size of public key"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Неверная длина публичного ключа"})
 		return
 	} else if bytes.Equal(request.PublicKey, request_data.PublicKey) {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "You cannot revoke access to your file from yourself"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Вы не можете отозвать доступ к своему файлу у самого себя"})
 		return
 	}
 
-	// Try to remove the public key from the `access` field of file's metadata in the database
+	// Попытка удалить публичный ключ из поля `access` метаданных файла в базе данных
 	if matched, modified, err := db.RevokeAccess(request.PublicKey, request_data.Name, request_data.PublicKey); err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 	} else if matched == 0 {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "A file with this name does not exist"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Файл с таким именем не существует"})
 	} else if modified == 0 {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "This user does not have access to this file"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Этот пользователь и так не имеет доступ к этому файлу"})
 	} else {
 		protocol.SendResponse(conn, true, &protocol.Empty{})
 	}

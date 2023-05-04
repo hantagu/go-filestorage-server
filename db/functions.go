@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func GetUsername(public_key ed25519.PublicKey) (string, error) {
+func GetUserByPublicKey(public_key ed25519.PublicKey) (string, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
@@ -22,6 +22,20 @@ func GetUsername(public_key ed25519.PublicKey) (string, error) {
 	}
 
 	return result.Username, nil
+}
+
+func GetUserByUsername(username string) ([]byte, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
+	defer cancel()
+
+	result := &db_types.User{}
+	if err := UsersCollection.FindOne(ctx, &bson.D{{Key: "username", Value: username}}).Decode(result); err != nil {
+		return nil, err
+	}
+
+	return result.PublicKey, nil
+
 }
 
 func SetUsername(public_key ed25519.PublicKey, username string) error {

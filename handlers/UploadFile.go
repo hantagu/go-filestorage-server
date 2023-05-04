@@ -16,9 +16,11 @@ import (
 
 func UploadFile(conn net.Conn, request *protocol.Request) {
 
+	// Генерация ID файла и пути, по которому он будет сохранён
 	file_id := primitive.NewObjectID()
 	file_path := fmt.Sprintf("%s%c%s", config.Config.UserdataPath, os.PathSeparator, file_id.Hex())
 
+	// Создание файла
 	file, err := os.Create(file_path)
 	if err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
@@ -26,24 +28,24 @@ func UploadFile(conn net.Conn, request *protocol.Request) {
 	}
 	defer file.Close()
 
-	// Unmarshal file's metadata
+	// Десериализация данных из запроса
 	request_data := &protocol.FileMetadata{}
 	if err := bson.Unmarshal(request.Data, request_data); err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 		goto exit
 	} else if request_data.Chunks == 0 {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "File cannot be empty"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Файл не может быть пустым"})
 		goto exit
 	} else if !regexp.MustCompile(`^[^[:cntrl:]/]+$`).MatchString(request_data.Name) {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "Invalid file name"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Недопустимое имя файла"})
 		goto exit
 	}
 
-	// Try to insert the file metadata to the MongoDB
+	// Попытка вставить метаданные файла в базу данных
 	if err := db.InsertFileMetadata(file_id, request.PublicKey, request_data.Name, request_data.Encrypted); err != nil {
 
 		if mongo.IsDuplicateKeyError(err) {
-			protocol.SendResponse(conn, false, &protocol.Description{Description: "A file with this name already exists"})
+			protocol.SendResponse(conn, false, &protocol.Description{Description: "Файл с таким именем уже существует"})
 		} else {
 			protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 		}
@@ -51,10 +53,10 @@ func UploadFile(conn net.Conn, request *protocol.Request) {
 		goto exit
 	}
 
-	// If the metadata is successfully inserted into MongoDB, then answer that the server is ready to receive chunks of this file
+	// Если метаданные были успешно сохранены в базе данных, тогда отправляем ответ о готовности принять сам файл
 	protocol.SendResponse(conn, true, &protocol.Empty{})
 
-	// Read all chunks of the file
+	// Получение всех блоков файла
 	for i := uint32(0); i < request_data.Chunks; i++ {
 
 		request, err := protocol.ReceiveAndVerifyPacket(conn)
@@ -64,7 +66,7 @@ func UploadFile(conn net.Conn, request *protocol.Request) {
 			if err != nil {
 				protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 			} else {
-				protocol.SendResponse(conn, false, &protocol.Description{Description: "Invalid request"})
+				protocol.SendResponse(conn, false, &protocol.Description{Description: "Неверный запрос"})
 			}
 
 			goto exit

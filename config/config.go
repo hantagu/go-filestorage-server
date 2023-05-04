@@ -19,14 +19,14 @@ var Config *config = &config{
 }
 
 type config struct {
-	ListenAddress           string `json:"listen_address"`
-	TLSCertificatePath      string `json:"tls_cert_path"`
-	TLSKeyPath              string `json:"tls_key_path"`
-	UserdataPath            string `json:"userdata_path"`
-	MongoDB_URI             string `json:"mongodb_uri"`
-	MongoDB_DB              string `json:"mongodb_db"`
-	MongoDB_FilesCollection string `json:"mongodb_filescollection"`
-	MongoDB_UsersCollection string `json:"mongodb_userscollection"`
+	ListenAddress            string `json:"listen_address"`
+	TLSCertificatePath       string `json:"tls_cert_path"`
+	TLSKeyPath               string `json:"tls_key_path"`
+	UserdataPath             string `json:"userdata_path"`
+	MongoDB_URI              string `json:"mongodb_uri"`
+	MongoDB_DB               string `json:"mongodb_db"`
+	MongoDB_Files_Collection string `json:"mongodb_files_collection"`
+	MongoDB_Users_Collection string `json:"mongodb_users_collection"`
 }
 
 func Init() {

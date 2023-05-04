@@ -12,7 +12,7 @@ import (
 
 func GrantAccess(conn net.Conn, request *protocol.Request) {
 
-	// Unmarshal request data
+	// Десериализация данных из запроса
 	request_data := &protocol.FileAccess{}
 	if err := bson.Unmarshal(request.Data, request_data); err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
@@ -20,20 +20,20 @@ func GrantAccess(conn net.Conn, request *protocol.Request) {
 	}
 
 	if len(request_data.PublicKey) != ed25519.PublicKeySize {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "Invalid size of public key"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Неверная длина публичного ключа"})
 		return
 	} else if bytes.Equal(request.PublicKey, request_data.PublicKey) {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "You cannot grant access to your file to yourself"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Вы не можете предоставить доступ к своему файлу самому себе"})
 		return
 	}
 
-	// Insert the public key into the file's metadata in the database
+	// Вставка публичного ключа в метаданные файла в базе данных
 	if matched, modified, err := db.GrantAccess(request.PublicKey, request_data.Name, request_data.PublicKey); err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 	} else if matched == 0 {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "A file with this name does not exist"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Файл с таким именем не существует"})
 	} else if modified == 0 {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "This user already has access to this file"})
+		protocol.SendResponse(conn, false, &protocol.Description{Description: "Этот пользователь уже имеет доступ к этому файлу"})
 	} else {
 		protocol.SendResponse(conn, true, &protocol.Empty{})
 	}

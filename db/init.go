@@ -19,7 +19,7 @@ var (
 
 func Init() error {
 
-	// Create a new client with URI from the config
+	// Создание нового клиента для подключения к MongoDB
 	opts := options.Client()
 	opts.ApplyURI(config.Config.MongoDB_URI)
 	var err error
@@ -27,14 +27,14 @@ func Init() error {
 		return err
 	}
 
-	// Connect to the MongoDB server
+	// Подключение к серверу MongoDB
 	ctx, cancel := context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	if err := Client.Connect(ctx); err != nil {
 		return err
 	}
 
-	// Ping the MongoDB server
+	// Проверка соединения
 	ctx, cancel = context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	if err := Client.Ping(ctx, nil); err != nil {
@@ -42,10 +42,10 @@ func Init() error {
 	}
 
 	Database = Client.Database(config.Config.MongoDB_DB)
-	UsersCollection = Database.Collection(config.Config.MongoDB_UsersCollection)
-	FilesCollection = Database.Collection(config.Config.MongoDB_FilesCollection)
+	UsersCollection = Database.Collection(config.Config.MongoDB_Users_Collection)
+	FilesCollection = Database.Collection(config.Config.MongoDB_Files_Collection)
 
-	// Make the `public_key` field unique in the Users collection
+	// Создание индекса на поле `public_key`, который сделает его уникальным во всей коллекции пользователей
 	ctx, cancel = context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	UsersCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
@@ -53,7 +53,7 @@ func Init() error {
 		Options: options.Index().SetUnique(true),
 	})
 
-	// Make the `username` field unique in the Users collection
+	// Создание индекса на поле `username`, который сделает его уникальным во всей коллекции пользователей
 	ctx, cancel = context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	UsersCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
@@ -61,7 +61,7 @@ func Init() error {
 		Options: options.Index().SetUnique(true),
 	})
 
-	// Make the `name` field unique for each user
+	// Создание индекса на поле `name`, который сделает его уникальным во всей коллекции файлов для каждого пользователя
 	ctx, cancel = context.WithTimeout(context.Background(), config.MONGODB_CONTEXT_TIMEOUT*time.Second)
 	defer cancel()
 	FilesCollection.Indexes().CreateOne(ctx, mongo.IndexModel{

@@ -6,61 +6,61 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// Generic request packet
+// Общий пакет запросов
 type Request struct {
-	Type      string            `bson:"type"`       // Type of request
-	PublicKey ed25519.PublicKey `bson:"public_key"` // Sender's public key
-	Data      bson.Raw          `bson:"data"`       // Packet data
+	Type      string            `bson:"type"`       // Тип запроса
+	PublicKey ed25519.PublicKey `bson:"public_key"` // Публичный ключ отправителя
+	Data      bson.Raw          `bson:"data"`       // Данные запроса
 }
 
-// Generic response packet
+// Общий пакет ответов
 type Response struct {
-	Successful bool     `bson:"successful"` // Was the request successful?
-	Data       bson.Raw `bson:"data"`       // Packet data
+	Successful bool     `bson:"successful"` // Был ли запрос успешным?
+	Data       bson.Raw `bson:"data"`       // Данные ответа
 }
 
-// Empty packet data
+// Пустой пакет
 type Empty struct{}
 
-// Packet data with simple string description
+// Данные, содержащие строковое описание. Используется в ответах от сервера
 type Description struct {
 	Description string `bson:"description"`
 }
 
-// -------------------------------------------------- Users -------------------------------------------------- //
+// -------------------------------------------------- Пользователи -------------------------------------------------- //
 
-// Packet data with a public key
+// Данные, содержащие публичный ключ
 type PublicKey struct {
 	PublicKey ed25519.PublicKey `bson:"public_key"`
 }
 
-// Packet data with a username
+// Данные, содержащие имя пользователя
 type Username struct {
 	Username string `bson:"username"`
 }
 
-// -------------------------------------------------- Files -------------------------------------------------- //
+// -------------------------------------------------- Файлы -------------------------------------------------- //
 
-// Packet data with a file name
+// Данные, содержащие название файла
 type FileName struct {
 	Name string `bson:"name"`
 }
 
-// Packet data with file name and public key to which access to this file will be granted / revoked
+// Данные, содержащие название файла и публичный ключ, которому будет предоставлен / отозван доступ к указанному файлу
 type FileAccess struct {
 	Name      string            `bson:"name"`
 	PublicKey ed25519.PublicKey `bson:"public_key"`
 }
 
-// Packet data with a chunk of the file
+// Данные, содержащие один блок файла, на которые он был разбит
 type FileChunk struct {
-	Chunk   uint32 `bson:"chunk"`   // Number of this chunk
-	Content []byte `bson:"content"` // Content of this chunk
+	Chunk   uint32 `bson:"chunk"`   // Номер этого блока
+	Content []byte `bson:"content"` // Его содержимое
 }
 
-// Packet data with a metadata of the file
+// Данные, содержащие метаданные файла
 type FileMetadata struct {
-	Name      string `bson:"name"`      // File name
-	Encrypted bool   `bson:"encrypted"` // Was this file additionally encrypted on the client side?
-	Chunks    uint32 `bson:"chunks"`    // Total number of chunks
+	Name      string `bson:"name"`      // Название файла
+	Encrypted bool   `bson:"encrypted"` // Был ли файл дополнительно зашифрован на стороне клиента?
+	Chunks    uint32 `bson:"chunks"`    // Общее количество блоков
 }
