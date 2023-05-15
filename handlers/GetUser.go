@@ -17,11 +17,11 @@ func GetUser(conn net.Conn, request *protocol.Request) {
 
 	// Попытка десериализовать данные из запроса как публичный ключ
 	err1 := bson.Unmarshal(request.Data, request_data_publickey)
-	if err1 != nil {
+	if err1 != nil || len(request_data_publickey.PublicKey) == 0 {
 
 		// Если не получилось, попытка десериализовать данные из запроса как имя пользователя
 		err2 := bson.Unmarshal(request.Data, request_data_username)
-		if err2 != nil {
+		if err2 != nil || len(request_data_username.Username) == 0 {
 			protocol.SendResponse(conn, false, &protocol.Description{Description: "Неверные данные в запросе"})
 			return
 		}
@@ -38,7 +38,7 @@ func GetUser(conn net.Conn, request *protocol.Request) {
 		}
 	}
 
-	if result, err := db.GetUserByPublicKey(request.PublicKey); errors.Is(err, mongo.ErrNoDocuments) {
+	if result, err := db.GetUserByPublicKey(request_data_publickey.PublicKey); errors.Is(err, mongo.ErrNoDocuments) {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: "Пользователь с таким публичным ключом не найден"})
 	} else if err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
