@@ -19,7 +19,7 @@ func main() {
 	config.Init()
 
 	if err := db.Init(); err != nil {
-		log.Default().Fatal("Не удалось подключиться к MongoDB\n\nПопробуйте запустить MongoDB в существующем Docker-контейнере:\n\tdocker start filestorage_db\n\nИли запустите новый:\n\tdocker run -d -p 127.0.0.1:27017:27017 --name filestorage_db mongo\n\n")
+		log.Default().Fatalln("Не удалось подключиться к MongoDB. Попробуйте запустить MongoDB в существующем Docker-контейнере: docker start filestorage_db, или запустите новый: docker run -d -p 127.0.0.1:27017:27017 --name filestorage_db mongo")
 	}
 
 	// Создание директории, в которой будут храниться все файлы пользователей, если она не существует
@@ -46,7 +46,7 @@ func main() {
 		log.Default().Fatalln(err)
 	}
 
-	log.Default().Printf("Сервер был запущен и ожидает подключений по адресу %s\nНажмите Ctrl-C для завершения работы", listener.Addr())
+	log.Default().Printf("Сервер был запущен и ожидает подключений по адресу %s. Нажмите Ctrl-C для завершения работы\n", listener.Addr())
 
 	// Создание канала для получения сигналов из операционной системы
 	shutdownChan := make(chan os.Signal, 1)
@@ -57,10 +57,10 @@ func main() {
 
 	go func() {
 		for range shutdownChan {
-			log.Default().Println("\nОжидание завершения всех соединений...\nНажмите Ctrl-C снова, чтобы завершить работу принудительно")
+			log.Default().Println(": Ожидание завершения всех соединений... Нажмите Ctrl-C снова, чтобы завершить работу принудительно")
 			go func() {
 				for range shutdownChan {
-					log.Default().Println("\nПринудительное завершение работы")
+					log.Default().Println(": Принудительное завершение работы")
 					listener.Close()
 					os.Exit(0)
 				}

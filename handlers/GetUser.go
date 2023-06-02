@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/ed25519"
 	"errors"
 	"go-filestorage-server/db"
 	"go-filestorage-server/protocol"
@@ -17,7 +18,7 @@ func GetUser(conn net.Conn, request *protocol.Request) {
 
 	// Попытка десериализовать данные из запроса как публичный ключ
 	err1 := bson.Unmarshal(request.Data, request_data_publickey)
-	if err1 != nil || len(request_data_publickey.PublicKey) == 0 {
+	if err1 != nil || len(request_data_publickey.PublicKey) != ed25519.PublicKeySize {
 
 		// Если не получилось, попытка десериализовать данные из запроса как имя пользователя
 		err2 := bson.Unmarshal(request.Data, request_data_username)
@@ -27,7 +28,7 @@ func GetUser(conn net.Conn, request *protocol.Request) {
 		}
 
 		if result, err := db.GetUserByUsername(request_data_username.Username); errors.Is(err, mongo.ErrNoDocuments) {
-			protocol.SendResponse(conn, false, &protocol.Description{Description: "Пользователь с таким именем не найден"})
+			protocol.SendResponse(conn, true, &protocol.PublicKey{PublicKey: []byte{}})
 			return
 		} else if err != nil {
 			protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
@@ -39,7 +40,7 @@ func GetUser(conn net.Conn, request *protocol.Request) {
 	}
 
 	if result, err := db.GetUserByPublicKey(request_data_publickey.PublicKey); errors.Is(err, mongo.ErrNoDocuments) {
-		protocol.SendResponse(conn, false, &protocol.Description{Description: "Пользователь с таким публичным ключом не найден"})
+		protocol.SendResponse(conn, true, &protocol.Username{Username: ""})
 	} else if err != nil {
 		protocol.SendResponse(conn, false, &protocol.Description{Description: err.Error()})
 	} else {
